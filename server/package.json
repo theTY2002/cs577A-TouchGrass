@@ -1,0 +1,16 @@
+{
+  "name": "touchgrass-server",
+  "version": "1.0.0",
+  "description": "TouchGrass backend API server",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}

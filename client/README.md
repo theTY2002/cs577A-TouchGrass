@@ -1,77 +1,93 @@
-# Client — UI & Frontend
+# Client — TouchGrass UI
 
-The `client` directory is where all **UI and frontend code** for the TouchGrass application lives. This is where you build the interface users see and interact with in the browser.
+Campus events discovery UI. Photo-forward, social, Instagram-like. React + Vite + Tailwind.
 
 ---
 
-## Running the Client Locally
+## Quick Start
 
-### Prerequisites
+```bash
+cd client
+npm install
+npm run dev
+```
 
-- [Node.js](https://nodejs.org/) installed (v18+ recommended)
+Open **http://localhost:5000**.
 
-### Steps
+---
 
-1. **Navigate to the client directory:**
-   ```bash
-   cd client
-   ```
+## Commands
 
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
+| Command         | Description                      |
+|-----------------|----------------------------------|
+| `npm run dev`   | Dev server (port 5000)           |
+| `npm run build` | Production build                 |
+| `npm run preview` | Preview production build       |
+| `npm run lint`  | ESLint                           |
 
-3. **Start the development server:**
-   ```bash
-   npm run dev
-   ```
+---
 
-4. **Open in your browser:**
-   ```
-   http://localhost:3000
-   ```
+## Customizing Palette
 
-The dev server supports hot module replacement (HMR)—changes to your code will appear in the browser without a full refresh.
+**`tailwind.config.js`** — theme colors:
+- `brand-forest`: #748873
+- `brand-terracotta`: #D1A980
+- `bg-paper`: #E5E0D8
+- `bg-white`: #F8F8F8
+
+**`src/index.css`** — `:root` CSS variables and `--hero-overlay`:
+```css
+:root {
+  --brand-forest: #748873;
+  --brand-terracotta: #D1A980;
+  --bg-paper: #E5E0D8;
+  --bg-white: #F8F8F8;
+  --hero-overlay: linear-gradient(90deg, rgba(116,136,115,0.42), rgba(209,169,128,0.22));
+}
+```
+
+---
+
+## Swapping Images
+
+**Hero** — Edit `src/components/Hero.jsx`:
+```js
+const HERO_IMAGE = 'https://your-image-url.jpg';
+```
+
+**Card images** — Edit `src/data/events.js`. Each event has `imageUrl`. Use Unsplash, e.g.:
+```js
+imageUrl: `https://images.unsplash.com/photo-ID?w=600&q=80`
+```
 
 ---
 
 ## Project Structure
 
-| File/Folder     | Purpose                                           |
-|-----------------|---------------------------------------------------|
-| `src/`          | Source code (components, styles, assets)          |
-| `src/App.jsx`   | Main app component                                |
-| `src/main.jsx`  | Entry point that mounts the app to the DOM        |
-| `src/index.css` | Global styles                                     |
-| `public/`       | Static assets (favicon, etc.)                     |
-| `index.html`    | HTML template—root of the single-page app         |
-| `vite.config.js`| Vite configuration (port 3000, plugins, etc.)     |
+| File/Folder           | Purpose                               |
+|-----------------------|---------------------------------------|
+| `src/App.jsx`         | Main app, filtering, like/join state  |
+| `src/components/Header.jsx` | Sticky header                     |
+| `src/components/Hero.jsx`   | Full-bleed photo hero            |
+| `src/components/Filters.jsx` | Story-like pills, date, My Event |
+| `src/components/EventCard.jsx` | Image-first cards, likes, avatars |
+| `src/components/FAB.jsx` | Floating create button             |
+| `src/data/events.js`  | Mock events (imageUrl, likes, etc.)   |
+| `tailwind.config.js`  | Tailwind theme, colors, shadows       |
+| `src/index.css`       | Base styles, animations, font import  |
 
 ---
 
-## Available Scripts
+## Features
 
-| Command       | Description                                |
-|---------------|--------------------------------------------|
-| `npm run dev` | Start dev server at http://localhost:3000  |
-| `npm run build` | Build for production                    |
-| `npm run preview` | Preview the production build locally  |
-| `npm run lint` | Run ESLint                               |
+- **Filtering**: Category pills (toggle on/off), date picker, clear
+- **Like**: Toggle like on cards, increments/decrements count
+- **Join**: Join events, shows "✓ Joined"
+- **Animations**: Staggered card entrance, heart pop on like, hover lift
+- **Accessibility**: aria-labels, keyboard focus, lazy images
 
 ---
 
-## Working with the Backend
+## Backend
 
-- **Client** runs at `http://localhost:3000` (this UI)
-- **Server** runs at `http://localhost:3001` (API)
-
-To call the API from your React components, use `http://localhost:3001` as the base URL, for example:
-
-```javascript
-fetch('http://localhost:3001/api/health')
-  .then(res => res.json())
-  .then(data => console.log(data));
-```
-
-Run both the client and server in separate terminals when developing full-stack features.
+Server runs at http://localhost:5001. Run client and server in separate terminals for full-stack dev.

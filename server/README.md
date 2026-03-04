@@ -33,12 +33,12 @@ The `server` directory is where **all backend code** for the TouchGrass applicat
 
 4. **Confirm it's running** — you should see:
    ```
-   Server running at http://localhost:3001
+   Server running at http://localhost:5001
    ```
 
 5. **Test it** — open a browser or use `curl`:
    ```bash
-   curl http://localhost:3001
+   curl http://localhost:5001
    ```
 
 ---
@@ -52,7 +52,7 @@ The `server` directory is where **all backend code** for the TouchGrass applicat
 - Imports Express (the web framework)
 - Creates an app
 - Defines routes (URLs and what they do)
-- Starts listening on a port (default 3000)
+- Starts listening on a port (default 5001)
 
 ### 2. **Express framework**
 
@@ -67,8 +67,8 @@ Client request  →  Express  →  Route handler  →  Response sent back
 
 ### 4. **Port and localhost**
 
-- **Port 3000** — The server listens on port 3000 by default. You can change it with the `PORT` environment variable.
-- **localhost** — On your machine, `localhost` (or `127.0.0.1`) points to your own computer, so `http://localhost:3000` means “the app running on this machine, port 3000.”
+- **Port 5001** — The server listens on port 5001 by default. You can change it with the `PORT` environment variable.
+- **localhost** — On your machine, `localhost` (or `127.0.0.1`) points to your own computer, so `http://localhost:5001` means “the app running on this machine, port 5001.”
 
 ### 5. **Project layout (typical for this directory)**
 

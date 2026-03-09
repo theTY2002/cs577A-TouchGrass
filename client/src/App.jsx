@@ -3,15 +3,15 @@
  * Client-side filtering (pill toggle, date), like state, staggered card entrance.
  * Edit: spacing, filter logic
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import Header from './components/Header';
 import Hero from './components/Hero';
 import Filters from './components/Filters';
 import EventCard from './components/EventCard';
 import FAB from './components/FAB';
-import { MOCK_EVENTS } from './data/events';
 
 function App() {
+  const [events, setEvents] = useState([]);
   const [activeCategory, setActiveCategory] = useState('All');
   const [selectedDate, setSelectedDate] = useState('');
   const [joinedIds, setJoinedIds] = useState(new Set());
@@ -20,12 +20,40 @@ function App() {
 
   const hasActiveFilters = activeCategory !== 'All' || selectedDate !== '';
 
+  useEffect(() => {
+    const fetchFeed = async () => {
+      try {
+        const response = await fetch('/api/feed');
+        const data = await response.json();
+        
+        const formattedData = data.map(post => ({
+          id: post.post_id,
+          title: post.title,
+          dateTime: post.date, 
+          location: post.location,
+          description: post.description,
+          tags: typeof post.tags === 'string' ? post.tags.split(',') : (post.tags || []),
+          likes: 0,
+          author: post.author_name,
+          capacity: post.max_members,
+          status: post.status
+        }));
+        
+        setEvents(formattedData);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    fetchFeed();
+  }, []);
+
   const handleCategoryChange = (cat) => {
     setActiveCategory((prev) => (prev === cat ? 'All' : cat));
   };
 
   const filteredEvents = useMemo(() => {
-    let result = [...MOCK_EVENTS];
+    let result = [...events]; 
 
     if (activeCategory !== 'All') {
       result = result.filter((e) =>
@@ -35,11 +63,11 @@ function App() {
 
     if (selectedDate) {
       const target = selectedDate;
-      result = result.filter((e) => e.dateTime.slice(0, 10) === target);
+      result = result.filter((e) => e.dateTime && e.dateTime.slice(0, 10) === target);
     }
 
     return result;
-  }, [activeCategory, selectedDate]);
+  }, [activeCategory, selectedDate, events]);
 
   const handleClearFilters = () => {
     setActiveCategory('All');
@@ -65,9 +93,8 @@ function App() {
     }));
   };
 
-  const getLikeCount = (event) =>
-    likeCounts[event.id] ?? event.likes;
-
+  const getLikeCount = (event) => likeCounts[event.id] ?? event.likes;
+  
   return (
     <div className="min-h-screen bg-cream flex flex-col">
       <Header />

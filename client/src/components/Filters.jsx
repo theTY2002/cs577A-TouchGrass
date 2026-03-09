@@ -6,7 +6,7 @@ import { useState } from 'react';
 
 export const PRIMARY_PILLS = [
   { label: 'None', value: 'None' },
-  { label: 'Sport', value: 'Sports' },
+  { label: 'Sport', value: 'Sport' },
   { label: 'Food', value: 'Food' },
   { label: 'Event', value: 'Event' },
 ];

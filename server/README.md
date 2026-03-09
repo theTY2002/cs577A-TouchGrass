@@ -9,6 +9,22 @@ The `server` directory is where **all backend code** for the TouchGrass applicat
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) installed (v18+ recommended)
+- A local environment file for database access
+
+### Connecting to the Database
+Before you can run the server locally you must set up your environment variables to connect to our live Supabase PostgreSQL database. If you skip this step the Express server will crash immediately upon starting.
+
+1. Navigate into the server directory
+
+2. Create a brand new file named .env
+
+3. Open the .env file and paste the database connection URL
+
+4. Your file should look exactly like this inside
+
+DATABASE_URL=postgresql://postgres:your_password@db.supabase.co:5432/postgres
+
+The exact URL is in our discord. Make sure your .env file is listed in your .gitignore file so you do not accidentally push sensitive database credentials to our public repository.
 
 ### Steps
 

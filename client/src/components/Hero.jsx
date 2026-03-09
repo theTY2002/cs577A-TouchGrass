@@ -2,8 +2,7 @@
  * Full-bleed photo hero with brand-tinted overlay, large headline, subheading.
  * Edit: image URL, overlay gradient in :root --hero-overlay
  */
-const HERO_IMAGE =
-  'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=1920&q=80';
+const HERO_IMAGE = '/bg.png';
 
 export default function Hero() {
   return (

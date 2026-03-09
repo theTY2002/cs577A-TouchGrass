@@ -4,14 +4,16 @@
  * Edit: spacing, filter logic
  */
 import { useMemo, useState } from 'react';
+import { Routes, Route } from 'react-router-dom';
 import Header from './components/Header';
 import Hero from './components/Hero';
 import Filters from './components/Filters';
 import EventCard from './components/EventCard';
 import FAB from './components/FAB';
+import Login from './pages/Login';
 import { MOCK_EVENTS } from './data/events';
 
-function App() {
+function HomePage() {
   const [activeCategory, setActiveCategory] = useState('All');
   const [selectedDate, setSelectedDate] = useState('');
   const [joinedIds, setJoinedIds] = useState(new Set());
@@ -129,6 +131,15 @@ function App() {
         <FAB />
       </main>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/login" element={<Login />} />
+    </Routes>
   );
 }
 

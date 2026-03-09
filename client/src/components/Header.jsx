@@ -2,6 +2,8 @@
  * Sticky top header with logo, avatar, and create button.
  * Edit: spacing in px-*, logo SVG
  */
+import { Link, useLocation } from 'react-router-dom';
+
 function LogoIcon() {
   return (
     <svg
@@ -17,6 +19,9 @@ function LogoIcon() {
 }
 
 export default function Header() {
+  const { pathname } = useLocation();
+  const isLoginPage = pathname === '/login';
+
   return (
     <header
       className="sticky top-0 z-50 bg-cream/90 backdrop-blur-md shadow-sm"
@@ -25,24 +30,26 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo + Brand */}
-          <a
-            href="#"
+          <Link
+            to="/"
             className="flex items-center gap-2 text-brand-forest font-semibold hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-brand-forest focus:ring-offset-2 rounded-lg px-1"
             aria-label="TouchGrass home"
           >
             <LogoIcon />
             <span>TouchGrass</span>
-          </a>
+          </Link>
 
-          {/* Right: Avatar */}
+          {/* Right: Avatar / Login */}
           <div className="flex items-center gap-3">
-            <button
-              type="button"
+            <Link
+              to={isLoginPage ? '/' : '/login'}
               className="flex items-center justify-center w-10 h-10 rounded-full bg-paper text-brand-forest font-semibold hover:bg-paper/80 focus:outline-none focus:ring-2 focus:ring-brand-forest focus:ring-offset-2 transition-all border border-brand-forest/20"
-              aria-label="Your profile, initials JD"
+              aria-label={isLoginPage ? 'Back to home' : 'Log in'}
             >
-              JD
-            </button>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5" aria-hidden>
+                <path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clipRule="evenodd" />
+              </svg>
+            </Link>
           </div>
         </div>
       </div>

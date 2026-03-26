@@ -1,43 +1,68 @@
-# TouchGrass
+# Authentication Service (Express + Supabase)
 
-A social media platform built around **crowdsourced data** on local events and activities at USC. Discover what's happening on campus, join groups, and meet new people.
+This module provides user authentication functionality for the project, including:
 
----
+- User registration (email + password)
+- User login
+- Session-based authentication
+- Protected routes
 
-## About the Project
-
-TouchGrass connects USC students and community members through shared interests and real-world activities. Users can:
-
-- **Browse events & activities** — Find local happenings (hikes, study groups, sports, socials) shared by the community
-- **Join groups** — Sign up for activities that match your interests
-- **Meet new people** — Build connections through in-person events instead of endless scrolling
-
-The platform is powered by user-contributed content: anyone can post events, and anyone can discover and join them.
+The module is built using **Node.js + Express**, with **Supabase PostgreSQL** as the database.
 
 ---
 
-## Project Structure
+# Tech Stack
 
-| Directory                | Description                                                       |
-| ------------------------ | ----------------------------------------------------------------- |
-| [`client/`](./client/)   | Frontend UI (React + Vite) — runs at `http://localhost:5000`      |
-| [`server/`](./server/)   | Backend API (Node.js + Express) — runs at `http://localhost:5001` |
-
-
----
-
-## Getting Started
-
-1. **Backend:** `cd server && npm install && npm start`
-2. **Frontend:** `cd client && npm install && npm run dev`
-3. Open [http://localhost:5000](http://localhost:5001) in your browser
-
-See each directory's README for more details.
+- Node.js
+- Express.js
+- PostgreSQL (Supabase)
+- bcrypt (password hashing)
+- express-session (session management)
 
 ---
 
-## Git Workflow
+# Getting Started
 
-For contribution guidelines, branching, and how to push code to GitHub, see:
+1. Pull relevant files:
 
-**[Gitflow](./Gitflow.md)** — links to the full [GitHub Workflow Guide](./GITHUB_WORKFLOW.md)
+   - server.js
+   - db.js
+   - package.json
+   - package-lock.json
+
+2. Install depndencies:
+    
+    `npm install`
+3. Run the server:
+
+    `node server.js`
+
+    server runs on: http://localhost:3000
+   4. API endpoints:
+
+       - **Register**: POST /api/register
+
+           - Request body: {"email": "demo@usc.edu", "password": "testauth123"}
+           - Notes: only 'usc.edu' domain is allowed
+       - **Login**: POST /api/login
+
+           - Request body: {"email": "demo@usc.edu", "password": "testauth123"}
+           - Response: {"message": "Logged in successfully", "user": {"u_id": 20, "email": "demo@usc.edu"} }
+       - **Get Current User**: GET /api/me
+
+           - Response: {"loggedIn": true, "user": {"u_id": 20, "email": "demo@usc.edu"} }
+       - **Access Protected Route Example**: GET /api/dashboard
+       - **Logout**: POST /api/logout
+
+       Requests must be sent with credentials (cookies).
+
+      Example (fetch):
+   
+           fetch("http://localhost:3000/api/login", {
+               method: "POST",
+               credentials: "include",
+               headers: {
+               "Content-Type": "application/json"
+               },
+               body: JSON.stringify({ email, password })
+           });

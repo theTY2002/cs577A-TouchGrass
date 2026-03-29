@@ -1,135 +1,213 @@
 /**
- * Login page: Header, Hero, left LOGIN text, right form card.
- * Matches project style (cream, paper, brand-forest, Inter).
+ * Login: split-screen layout (hero left, form right).
  */
-import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import Header from '../components/Header';
-import Hero from '../components/Hero';
+import { useEffect, useLayoutEffect, useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useSession } from '../SessionContext';
+import { setTouchGrassTitle } from '../documentTitle';
+import { TouchGrassMark } from '../components/TouchGrassIcon';
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { signedIn, signIn } = useSession();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    document.title = 'Login — TouchGrass';
+  useLayoutEffect(() => {
+    setTouchGrassTitle('Login');
   }, []);
 
-  const handleSubmit = async (e) => {
+  useEffect(() => {
+    if (signedIn) {
+      const from = location.state?.from;
+      const dest =
+        typeof from === 'string' && from.startsWith('/') && !from.startsWith('//')
+          ? from
+          : '/feed';
+      navigate(dest, { replace: true });
+    }
+  }, [signedIn, navigate, location.state]);
+
+  useEffect(() => {
+    const s = location.state;
+    if (s?.registered && typeof s.email === 'string') {
+      setEmail(s.email);
+      setSuccess('Account created. Log in with your email and password.');
+    }
+  }, [location.state]);
+
+  // Log in button: placeholder auth (no server); marks session and navigates home.
+  const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost:5001/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.message || 'Login failed');
-        return;
-      }
-      navigate('/');
-    } catch (err) {
-      setError('Network error. Is the server running?');
+      await new Promise((r) => setTimeout(r, 300));
+      signIn({ email: email.trim() });
+    } catch {
+      setError('Something went wrong. Try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  const inputClass =
+    'w-full rounded-[10px] border border-[#DBDBDB] bg-white px-4 py-3 text-[15px] text-neutral-900 placeholder:text-neutral-400 outline-none transition-shadow focus:border-brand-forest focus:ring-2 focus:ring-brand-forest/25';
+
   return (
-    <div className="min-h-screen bg-cream flex flex-col">
-      <Header />
-      <Hero />
+    <div className="flex min-h-screen flex-1 flex-col bg-white lg:flex-row">
+      {/* Left: brand + hero (desktop) */}
+      <section
+        className="relative hidden w-full flex-col justify-between overflow-hidden bg-white px-10 pb-10 pt-8 lg:flex lg:w-1/2 lg:px-14 lg:pb-14 lg:pt-10"
+        aria-label="TouchGrass"
+      >
+        <Link
+          to="/feed"
+          className="flex w-fit items-center gap-3 rounded-lg outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-brand-forest"
+        >
+          <TouchGrassMark />
+          <span className="text-lg font-semibold tracking-tight text-black">TouchGrass</span>
+        </Link>
 
-      {/* Main: left LOGIN text + form - form slightly toward center */}
-      <main className="flex-1 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-8">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-center gap-6 lg:gap-16">
-          {/* Left: LOGIN with Nabla font */}
-          <div className="flex-shrink-0 flex justify-center lg:justify-end">
-            <h2
-              className="font-login text-[48px] text-black -rotate-2 tracking-wide"
+        <div className="flex flex-1 flex-col items-center justify-center px-4">
+          <h1 className="max-w-[420px] text-center text-[clamp(1.75rem,3vw,2.25rem)] font-bold leading-tight tracking-tight text-black">
+            Discover plans happening{' '}
+            <span className="bg-gradient-to-r from-[#3d5c42] via-[#5f8060] to-[#A68B5B] bg-clip-text text-transparent">
+              around you.
+            </span>
+          </h1>
+          <div className="relative mt-10 w-full max-w-[min(100%,420px)]">
+            <div
+              className="pointer-events-none absolute -left-6 top-1/4 h-24 w-16 rounded-2xl bg-gradient-to-br from-emerald-200/85 to-green-100/70 shadow-lg blur-sm"
               aria-hidden
-            >
-              LOGIN
-            </h2>
-          </div>
-
-          {/* Right: form card - slightly right of center */}
-          <div className="flex-1 flex justify-center lg:justify-start lg:ml-20">
-            <div className="w-full max-w-[480px] bg-white rounded-card shadow-card p-8 border border-gray-100">
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {error && (
-                  <p className="text-sm text-red-600 bg-red-50 px-4 py-2 rounded-lg">
-                    {error}
-                  </p>
-                )}
-
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                    Email
-                  </label>
-                  <input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your email"
-                    required
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-gray-800 placeholder-gray-400 focus:border-brand-forest focus:ring-2 focus:ring-brand-forest/20 transition-colors"
-                    autoComplete="email"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                    Password
-                  </label>
-                  <input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
-                    required
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-gray-800 placeholder-gray-400 focus:border-brand-forest focus:ring-2 focus:ring-brand-forest/20 transition-colors"
-                    autoComplete="current-password"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3 px-4 bg-gray-900 text-white font-semibold rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-60 transition-all"
-                >
-                  {loading ? 'Signing in...' : 'Sign In'}
-                </button>
-
-                <div className="flex items-center justify-between text-sm">
-                  <Link
-                    to="#"
-                    className="text-gray-500 hover:text-brand-forest focus:outline-none focus:ring-2 focus:ring-brand-forest focus:ring-offset-2 rounded"
-                  >
-                    Forgot password?
-                  </Link>
-                  <Link
-                    to="#"
-                    className="font-semibold text-gray-900 hover:text-brand-forest focus:outline-none focus:ring-2 focus:ring-brand-forest focus:ring-offset-2 rounded uppercase tracking-wide"
-                  >
-                    Sign Up
-                  </Link>
-                </div>
-              </form>
-            </div>
+            />
+            <div
+              className="pointer-events-none absolute -right-4 bottom-0 h-28 w-20 rounded-2xl bg-gradient-to-br from-green-200/90 to-[#c9b896]/80 shadow-lg blur-sm"
+              aria-hidden
+            />
+            <img
+              src="/login-hero.png"
+              alt=""
+              className="relative z-[1] mx-auto w-full max-w-[320px] drop-shadow-xl"
+            />
           </div>
         </div>
-      </main>
+      </section>
+
+      {/* Mobile top bar */}
+      <div className="flex items-center justify-between border-b border-[#EFEFEF] px-5 py-4 lg:hidden">
+        <Link
+          to="/feed"
+          className="flex items-center gap-2.5 outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-brand-forest"
+        >
+          <TouchGrassMark small />
+          <span className="font-semibold text-black">TouchGrass</span>
+        </Link>
+      </div>
+
+      {/* Right: form */}
+      <section
+        className="flex flex-1 flex-col items-center justify-center px-6 py-10 sm:px-10 lg:w-1/2 lg:py-16"
+        aria-labelledby="login-heading"
+      >
+        <div className="w-full max-w-[380px]">
+          <h2
+            id="login-heading"
+            className="mb-8 text-center text-2xl font-bold tracking-tight text-black lg:text-left"
+          >
+            Log in to TouchGrass
+          </h2>
+
+          {/* Submitting this form triggers handleLogin (Log in button). */}
+          <form onSubmit={handleLogin} className="space-y-3">
+            {success && (
+              <p className="rounded-[10px] border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                {success}
+              </p>
+            )}
+            {error && (
+              <p className="rounded-[10px] border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {error}
+              </p>
+            )}
+
+            <div>
+              <label htmlFor="email" className="sr-only">
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setSuccess('');
+                }}
+                placeholder="Email or username"
+                required
+                className={inputClass}
+                autoComplete="email"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="sr-only">
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setSuccess('');
+                }}
+                placeholder="Password"
+                required
+                className={inputClass}
+                autoComplete="current-password"
+              />
+            </div>
+
+            {/* Primary login action (local only; no backend). */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="mt-2 w-full rounded-full bg-brand-forest py-3 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-forest/90 disabled:opacity-60"
+            >
+              {loading ? 'Signing in…' : 'Log in'}
+            </button>
+          </form>
+
+          <div className="mt-4 text-center">
+            <Link
+              to="#"
+              className="text-sm font-semibold text-black hover:text-neutral-700"
+            >
+              Forgot password?
+            </Link>
+          </div>
+
+          <div className="mt-8">
+            {/* Secondary CTA: navigates to sign-up (no API call here). */}
+            <Link
+              to="/signup"
+              className="flex w-full items-center justify-center rounded-full border-2 border-brand-forest bg-white py-3 text-sm font-semibold text-brand-forest transition-colors hover:bg-brand-forest/10"
+            >
+              Create new account
+            </Link>
+          </div>
+
+          <p className="mt-14 text-center text-xs text-neutral-400">TouchGrass</p>
+        </div>
+      </section>
     </div>
   );
 }

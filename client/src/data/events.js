@@ -2,8 +2,10 @@
  * Mock event data. Edit to add/modify events.
  * Each event: id, title, organizer {name, initials, avatarUrl}, description, location, datetime, capacity, joinedCount, tags, imageUrl, likes, comments
  */
-const UNSPLASH = (id, w = 600) =>
+export const unsplashPhoto = (id, w = 600) =>
   `https://images.unsplash.com/photo-${id}?w=${w}&q=80`;
+
+const UNSPLASH = unsplashPhoto;
 
 export const MOCK_EVENTS = [
   {

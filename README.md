@@ -18,11 +18,23 @@ The platform is powered by user-contributed content: anyone can post events, and
 
 ## Project Structure
 
-| Directory                | Description                                                       |
-| ------------------------ | ----------------------------------------------------------------- |
-| [`client/`](./client/)   | Frontend UI (React + Vite) — runs at `http://localhost:5000`      |
-| [`server/`](./server/)   | Backend API (Node.js + Express) — runs at `http://localhost:5001` |
+| Directory              | Description                                                       |
+| ---------------------- | ----------------------------------------------------------------- |
+| [`client/`](./client/) | Frontend UI (React + Vite) — runs at `http://localhost:5000`      |
+| [`server/`](./server/) | Backend API (Node.js + Express) — runs at `http://localhost:5001` |
 
+---
+
+## Documentation
+
+| Guide | Description |
+| ----- | ----------- |
+| [**UI / UX overview**](./docs/UI_UX.md) | Screen map, layout, design patterns, and where features live in the frontend |
+| [**Frontend session & auth**](./docs/FRONTEND_SESSION_AND_AUTH.md) | Session context, route guards (`RequireAuth`), and how to connect real backend auth and API middleware |
+| [**Gitflow**](./docs/Gitflow.md) | Branching model; links to the full workflow doc |
+| [**GitHub workflow**](./docs/GITHUB_WORKFLOW.md) | Pushes, PRs, and collaboration on GitHub |
+| [**Docker**](./docs/Docker-readme.md) | Running the stack with Docker |
+| [**Client (frontend)**](./client/README.md) | Dev commands, Tailwind palette, client file structure |
 
 ---
 
@@ -30,7 +42,7 @@ The platform is powered by user-contributed content: anyone can post events, and
 
 1. **Backend:** `cd server && npm install && npm start`
 2. **Frontend:** `cd client && npm install && npm run dev`
-3. Open [http://localhost:5000](http://localhost:5001) in your browser
+3. Open [http://localhost:5000](http://localhost:5000) in your browser
 
 See each directory's README for more details.
 
@@ -40,4 +52,4 @@ See each directory's README for more details.
 
 For contribution guidelines, branching, and how to push code to GitHub, see:
 
-**[Gitflow](./Gitflow.md)** — links to the full [GitHub Workflow Guide](./GITHUB_WORKFLOW.md)
+**[Gitflow](./docs/Gitflow.md)** — links to the full [GitHub Workflow Guide](./docs/GITHUB_WORKFLOW.md)

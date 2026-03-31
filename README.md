@@ -29,6 +29,7 @@ The platform is powered by user-contributed content: anyone can post events, and
 
 | Guide | Description |
 | ----- | ----------- |
+| [**Multi-agent collaboration**](./docs/AGENT_COLLABORATION.md) | Rules for AI/human contributors: ground truth, avoiding duplicate code, DB workflow, parallel git hygiene |
 | [**UI / UX overview**](./docs/UI_UX.md) | Screen map, layout, design patterns, and where features live in the frontend |
 | [**Frontend session & auth**](./docs/FRONTEND_SESSION_AND_AUTH.md) | Session context, route guards (`RequireAuth`), and how to connect real backend auth and API middleware |
 | [**Gitflow**](./docs/Gitflow.md) | Branching model; links to the full workflow doc |

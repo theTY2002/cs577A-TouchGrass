@@ -8,7 +8,7 @@ import {
   defaultProfileSettings,
   loadProfileSettings,
 } from './profileSettingsStorage';
-import { useSession } from './SessionContext';
+import { useSession } from '../cache/SessionContext';
 
 const ProfileSettingsContext = createContext(null);
 

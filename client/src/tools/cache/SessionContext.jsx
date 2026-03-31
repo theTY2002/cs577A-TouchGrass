@@ -1,6 +1,5 @@
 /**
- * Frontend-only session simulation: in-memory auth, profile snapshot, and event membership.
- * Replace SessionProvider internals later with API-backed auth without changing consumers.
+ * Session: API-backed auth (Bearer token in localStorage) plus client-only event membership.
  */
 import {
   createContext,
@@ -11,6 +10,13 @@ import {
   useState,
 } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
+import {
+  clearStoredSessionToken,
+  fetchCurrentUser,
+  getStoredSessionToken,
+  loginWithApi,
+  logoutWithApi,
+} from '../api';
 
 const SessionContext = createContext(null);
 
@@ -25,10 +31,22 @@ const LEGACY_AUTH_KEYS = [
 
 /**
  * @typedef {object} SessionUser
+ * @property {number|string} [id]
  * @property {string} email
  * @property {string} [displayName]
  * @property {string} [username]
  */
+
+/** @param {{ id?: number|string, email?: string, displayName?: string, username?: string } | null | undefined} u */
+function mapApiUserToSession(u) {
+  if (!u) return null;
+  return {
+    id: u.id,
+    email: String(u.email ?? '').trim(),
+    displayName: u.displayName != null ? String(u.displayName).trim() : '',
+    username: u.username != null ? String(u.username).trim() : '',
+  };
+}
 
 export function SessionProvider({ children }) {
   useEffect(() => {
@@ -39,24 +57,51 @@ export function SessionProvider({ children }) {
     }
   }, []);
 
+  const [sessionReady, setSessionReady] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
   /** @type {import('react').Dispatch<import('react').SetStateAction<SessionUser | null>>} */
   const [user, setUser] = useState(null);
   const [joinedEventIds, setJoinedEventIds] = useState(() => []);
   const [uiPreferences, setUiPreferences] = useState(() => ({}));
 
-  const signIn = useCallback(({ email, displayName, username }) => {
-    const e = String(email ?? '').trim();
-    if (!e) return;
-    setUser({
-      email: e,
-      displayName: displayName != null ? String(displayName).trim() : '',
-      username: username != null ? String(username).trim() : '',
-    });
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const token = getStoredSessionToken();
+      if (!token) {
+        if (!cancelled) setSessionReady(true);
+        return;
+      }
+      try {
+        const u = await fetchCurrentUser(token);
+        if (cancelled) return;
+        if (u) {
+          setUser(mapApiUserToSession(u));
+          setSignedIn(true);
+        } else {
+          clearStoredSessionToken();
+        }
+      } catch {
+        if (!cancelled) clearStoredSessionToken();
+      } finally {
+        if (!cancelled) setSessionReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const signInWithPassword = useCallback(async ({ email, password }) => {
+    const data = await loginWithApi({ email, password });
+    const u = data?.user;
+    if (!u) throw new Error('Invalid response from server');
+    setUser(mapApiUserToSession(u));
     setSignedIn(true);
   }, []);
 
   const signOut = useCallback(() => {
+    void logoutWithApi();
     setSignedIn(false);
     setUser(null);
     setJoinedEventIds([]);
@@ -102,11 +147,12 @@ export function SessionProvider({ children }) {
 
   const value = useMemo(
     () => ({
+      sessionReady,
       signedIn,
       user,
       joinedEventIds,
       uiPreferences,
-      signIn,
+      signInWithPassword,
       signOut,
       updateSessionUser,
       joinEvent,
@@ -116,11 +162,12 @@ export function SessionProvider({ children }) {
       setUiPreference,
     }),
     [
+      sessionReady,
       signedIn,
       user,
       joinedEventIds,
       uiPreferences,
-      signIn,
+      signInWithPassword,
       signOut,
       updateSessionUser,
       joinEvent,
@@ -144,10 +191,17 @@ export function useSession() {
   return ctx;
 }
 
-/** Route wrapper: send anonymous users to login (replace with server checks later). */
+/** Route wrapper: send anonymous users to login. */
 export function RequireAuth({ children }) {
-  const { signedIn } = useSession();
+  const { sessionReady, signedIn } = useSession();
   const location = useLocation();
+  if (!sessionReady) {
+    return (
+      <div className="flex flex-1 items-center justify-center text-neutral-500" aria-busy="true">
+        Loading…
+      </div>
+    );
+  }
   if (!signedIn) {
     return (
       <Navigate to="/login" replace state={{ from: location.pathname }} />

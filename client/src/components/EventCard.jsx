@@ -1,10 +1,10 @@
 /**
- * Image-first event card: 4:3 image, attendee avatars, likes/comments, tag pill, hover social buttons.
+ * Image-first event card: 4:3 image, attendee avatars, tag pill.
  * Edit: card radius, truncation, avatar sizes
  */
 import { useMemo, useState } from 'react';
-import { getProfileInitials } from '../profileSettingsStorage';
-import { useProfileSettings } from '../ProfileSettingsContext';
+import { getProfileInitials } from '../tools/context/profileSettingsStorage';
+import { useProfileSettings } from '../tools/context/ProfileSettingsContext';
 
 // Mock attendee avatars for overlap (using event organizer + a few placeholders)
 const AVATAR_URLS = [
@@ -16,53 +16,12 @@ const AVATAR_URLS = [
 const imageBadgeClass =
   'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold leading-tight bg-white/80 text-gray-800 backdrop-blur-sm border border-white/60 shadow-sm';
 
-function HeartIcon({ filled, className = 'w-5 h-5' }) {
-  return (
-    <svg
-      className={className}
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill={filled ? 'currentColor' : 'none'}
-      stroke="currentColor"
-      strokeWidth="2"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-      />
-    </svg>
-  );
-}
-
-function ShareIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      className="w-5 h-5"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
-      />
-    </svg>
-  );
-}
-
 export default function EventCard({
   event,
   isJoined = false,
   isCreatedByUser = false,
   onViewDetails,
   onJoin,
-  onLike,
-  isLiked = false,
-  likeCount,
   index = 0,
 }) {
   const {
@@ -75,7 +34,6 @@ export default function EventCard({
     joinedCount,
     tags: tagsRaw,
     imageUrl,
-    comments,
   } = event;
 
   const tags = Array.isArray(tagsRaw) ? tagsRaw : [];
@@ -95,9 +53,7 @@ export default function EventCard({
     }
   }
 
-  const [heartAnim, setHeartAnim] = useState(false);
   const [tagsOpen, setTagsOpen] = useState(false);
-  const displayLikes = likeCount ?? event.likes;
   const visibleTags = tags.slice(0, 3);
   const hasMoreTags = tags.length > 3;
 
@@ -141,12 +97,6 @@ export default function EventCard({
     userPic,
     userInits,
   ]);
-
-  const handleLike = () => {
-    setHeartAnim(true);
-    onLike?.(event);
-    setTimeout(() => setHeartAnim(false), 300);
-  };
 
   return (
     <article
@@ -222,30 +172,6 @@ export default function EventCard({
           </div>
         </div>
 
-        {/* Hover overlay - heart & share */}
-        <div className="absolute inset-0 z-30 pointer-events-none group-hover:pointer-events-auto bg-black/0 group-hover:bg-black/25 transition-all duration-200 flex items-center justify-center gap-4 opacity-0 group-hover:opacity-100">
-          <button
-            type="button"
-            onClick={handleLike}
-            className={`p-2.5 rounded-full bg-brand-forest shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-white/80 ${
-              heartAnim ? 'animate-heart' : ''
-            }`}
-            aria-label={isLiked ? 'Unlike' : 'Like'}
-            aria-pressed={isLiked}
-          >
-            <HeartIcon
-              filled={isLiked}
-              className={isLiked ? 'w-5 h-5 text-red-300' : 'w-5 h-5 text-white'}
-            />
-          </button>
-          <button
-            type="button"
-            className="p-2.5 rounded-full bg-brand-forest text-white shadow-lg hover:bg-brand-forest/90 hover:scale-105 active:scale-95 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/80"
-            aria-label="Share"
-          >
-            <ShareIcon />
-          </button>
-        </div>
       </div>
 
       {/* Content panel */}
@@ -275,14 +201,6 @@ export default function EventCard({
               <time dateTime={rawDateTime || undefined}>{formattedDate}</time>
             </div>
           )}
-        </div>
-
-        <div className="flex items-center gap-4 mb-4 text-sm text-gray-500">
-          <span className="flex items-center gap-1" aria-label={`${displayLikes} likes`}>
-            <HeartIcon filled={isLiked} className="w-4 h-4 text-gray-400" />
-            {displayLikes}
-          </span>
-          <span aria-label={`${comments} comments`}>{comments} comments</span>
         </div>
 
         <div className="relative flex flex-wrap items-center gap-2 mb-5">

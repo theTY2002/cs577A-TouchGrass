@@ -3,14 +3,14 @@
  */
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useSession } from '../SessionContext';
-import { setTouchGrassTitle } from '../documentTitle';
+import { useSession } from '../tools/cache/SessionContext';
+import { setTouchGrassTitle } from '../tools/ui/documentTitle';
 import {
   defaultProfileSettings,
   getProfileInitials,
   loadProfileSettings,
   saveProfileSettings,
-} from '../profileSettingsStorage';
+} from '../tools/context/profileSettingsStorage';
 
 const panelClass =
   'rounded-md border border-stone-200/90 bg-white shadow-sm';

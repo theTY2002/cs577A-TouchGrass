@@ -10,10 +10,17 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Settings from './pages/Settings';
 import Help from './pages/Help';
-import { RequireAuth, useSession } from './SessionContext';
+import { RequireAuth, useSession } from './tools/cache/SessionContext';
 
 function RootRedirect() {
-  const { signedIn } = useSession();
+  const { sessionReady, signedIn } = useSession();
+  if (!sessionReady) {
+    return (
+      <div className="flex flex-1 items-center justify-center text-neutral-500" aria-busy="true">
+        Loading…
+      </div>
+    );
+  }
   return <Navigate to={signedIn ? '/feed' : '/login'} replace />;
 }
 

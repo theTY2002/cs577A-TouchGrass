@@ -3,16 +3,16 @@
  */
 import { useParams, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { setTouchGrassTitle } from '../documentTitle';
-import { useSession } from '../SessionContext';
-import { FALLBACK_CONTACT_LOCALPART } from '../sessionDefaults';
+import { setTouchGrassTitle } from '../tools/ui/documentTitle';
+import { useSession } from '../tools/cache/SessionContext';
+import { FALLBACK_CONTACT_LOCALPART } from '../tools/cache/sessionDefaults';
 import {
   appendLocalEvent,
   buildEventFromForm,
   getEventById,
   isLocalUserEventId,
   updateLocalEvent,
-} from '../localEventsStorage';
+} from '../tools/cache/localEventsStorage';
 import LocationAutocomplete from '../components/LocationAutocomplete';
 import { FEED_HERO_IMAGE } from '../components/Hero';
 
@@ -260,7 +260,7 @@ export default function EventForm() {
       if (isLocalUserEventId(id)) {
         const prev = getEventById(id);
         if (prev) {
-          updateLocalEvent(buildEventFromForm(form, contactEmail, prev));
+          updateLocalEvent(buildEventFromForm(form, contactEmail, user, prev));
         }
       }
       navigate(`/event/${id}`);
@@ -269,7 +269,7 @@ export default function EventForm() {
     if (dateInPastError || (form.date && form.date < todayISODateLocal())) {
       return;
     }
-    const newEvent = buildEventFromForm(form, contactEmail);
+    const newEvent = buildEventFromForm(form, contactEmail, user);
     appendLocalEvent(newEvent);
     setCreateSuccessEmail(contactEmail);
   };

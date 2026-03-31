@@ -7,6 +7,31 @@ export const PROFILE_SETTINGS_CHANGED_EVENT = 'touchgrass-profile-settings-chang
 
 const STORAGE_KEY = PROFILE_SETTINGS_STORAGE_KEY;
 
+function normalizeEmail(value) {
+  return typeof value === 'string' ? value.trim().toLowerCase() : '';
+}
+
+function readAllProfiles() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    // Backward compatibility: migrate older single-profile payload to per-email map.
+    if (typeof parsed.email === 'string' && (parsed.name || parsed.bio || parsed.avatarDataUrl)) {
+      const email = normalizeEmail(parsed.email);
+      return email ? { [email]: parsed } : {};
+    }
+    return parsed;
+  } catch {
+    return {};
+  }
+}
+
+function writeAllProfiles(profilesByEmail) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(profilesByEmail));
+}
+
 export const defaultProfileSettings = {
   name: 'Alex Chen',
   bio: 'Love hiking, coffee, and spontaneous study sessions.',
@@ -29,12 +54,13 @@ export const defaultProfileSettings = {
 export function loadProfileSettings(sessionEmail = '') {
   const fallbackEmail =
     typeof sessionEmail === 'string' && sessionEmail.trim() ? sessionEmail.trim() : '';
+  const normalizedEmail = normalizeEmail(fallbackEmail);
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
+    const allProfiles = readAllProfiles();
+    const parsed = normalizedEmail ? allProfiles[normalizedEmail] : null;
+    if (!parsed) {
       return { ...defaultProfileSettings, email: fallbackEmail };
     }
-    const parsed = JSON.parse(raw);
     const merged = { ...defaultProfileSettings, ...parsed };
     if (!merged.email || typeof merged.email !== 'string') {
       merged.email = fallbackEmail;
@@ -47,7 +73,11 @@ export function loadProfileSettings(sessionEmail = '') {
 
 export function saveProfileSettings(settings) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    const email = normalizeEmail(settings?.email);
+    if (!email) return;
+    const allProfiles = readAllProfiles();
+    allProfiles[email] = { ...settings };
+    writeAllProfiles(allProfiles);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent(PROFILE_SETTINGS_CHANGED_EVENT));
     }

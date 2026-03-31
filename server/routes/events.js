@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { Pool } = require('pg');
+const { invalidateFeedCache } = require('../feed/feedCache');
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL
@@ -35,6 +36,8 @@ router.post('/', async (req, res) => {
             [newGroupId, owner_user_id]
         );
 
+        invalidateFeedCache();
+
         res.status(201).json({ 
             message: 'Event and group successfully created', 
             post_id: newPostId 
@@ -47,7 +50,7 @@ router.post('/', async (req, res) => {
 
 // POST: Join an existing event
 router.post('/:post_id/join', async (req, res) => {
-    const postId = parseInt(req.params.post_id);
+    const postId = req.params.post_id;
     const { user_id } = req.body; // The frontend will send the logged-in user's ID
 
     try {
@@ -74,6 +77,8 @@ router.post('/:post_id/join', async (req, res) => {
             'SELECT COUNT(*)::int AS count FROM group_members WHERE group_id = $1',
             [groupId]
         );
+
+        invalidateFeedCache();
 
         res.json({ 
             message: 'Successfully joined event', 

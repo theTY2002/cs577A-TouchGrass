@@ -1,8 +1,8 @@
 /**
  * Members card: display joined members (mocked + local user if joined).
  */
-import { getProfileInitials } from '../profileSettingsStorage';
-import { useProfileSettings } from '../ProfileSettingsContext';
+import { getProfileInitials } from '../tools/context/profileSettingsStorage';
+import { useProfileSettings } from '../tools/context/ProfileSettingsContext';
 
 const MOCK_MEMBERS = [
   { name: 'Alex C.', initials: 'AC', avatarUrl: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=80&h=80&fit=crop' },

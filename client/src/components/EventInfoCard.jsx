@@ -4,9 +4,9 @@
  */
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getProfileInitials } from '../profileSettingsStorage';
-import { useProfileSettings } from '../ProfileSettingsContext';
-import { useSession } from '../SessionContext';
+import { getProfileInitials } from '../tools/context/profileSettingsStorage';
+import { useProfileSettings } from '../tools/context/ProfileSettingsContext';
+import { useSession } from '../tools/cache/SessionContext';
 
 function IconLocation({ className }) {
   return (

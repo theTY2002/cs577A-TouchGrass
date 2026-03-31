@@ -4,13 +4,13 @@
  */
 import { useParams, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useLayoutEffect } from 'react';
-import { setTouchGrassTitle } from '../documentTitle';
-import { getEventById, isLocalUserEventId, DEMO_USER_OWNED_EVENT_ID } from '../localEventsStorage';
+import { setTouchGrassTitle } from '../tools/ui/documentTitle';
+import { getEventById, isLocalUserEventId, DEMO_USER_OWNED_EVENT_ID } from '../tools/cache/localEventsStorage';
 import EventInfoCard from '../components/EventInfoCard';
 import ChatPanel from '../components/ChatPanel';
 import AboutAboveChatCard from '../components/AboutCard';
 import MembersCard from '../components/MembersCard';
-import { useSession } from '../SessionContext';
+import { useSession } from '../tools/cache/SessionContext';
 
 const pageShellClass =
   'min-h-screen bg-gradient-to-b from-[#E8E2D8] via-[#F2EDE4] to-[#EAE4DA]';
@@ -24,7 +24,7 @@ const btnEditHeroClass =
 export default function EventDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isJoinedToEvent } = useSession();
+  const { user, isJoinedToEvent } = useSession();
   const [event, setEvent] = useState(null);
   const [lookupDone, setLookupDone] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -74,8 +74,15 @@ export default function EventDetails() {
     );
   }
 
+  const ownerUserId = event.ownerUserId != null ? String(event.ownerUserId) : '';
+  const ownerEmail = String(event.ownerEmail || '').trim().toLowerCase();
+  const userId = user?.id != null ? String(user.id) : '';
+  const userEmail = String(user?.email || '').trim().toLowerCase();
   const isOrganizer =
-    isLocalUserEventId(event.id) || String(event.id) === DEMO_USER_OWNED_EVENT_ID;
+    (ownerUserId && userId && ownerUserId === userId) ||
+    (ownerEmail && userEmail && ownerEmail === userEmail) ||
+    ((!ownerUserId && !ownerEmail) &&
+      (isLocalUserEventId(event.id) || String(event.id) === DEMO_USER_OWNED_EVENT_ID));
   const joined = isJoinedToEvent(event.id);
   /** Hosts can always use chat; guests need to join first. */
   const chatUnlocked = joined || isOrganizer;

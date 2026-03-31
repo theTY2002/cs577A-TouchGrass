@@ -12,6 +12,7 @@ import FAB from '../components/FAB';
 import { MOCK_EVENTS } from '../data/events';
 import { loadLocalEvents, isPlanCreatedByCurrentUser, isPlanInMyPlans } from '../localEventsStorage';
 import { useSession } from '../SessionContext';
+import { fetchFeed, joinEvent as apiJoinEvent } from '../api';
 
 const STORAGE_LIKES = 'liked_';
 const STORAGE_LIKE_COUNTS = 'like_counts';
@@ -56,9 +57,26 @@ export default function Feed() {
     setFiltersDocked,
   } = useFeedFilters();
 
-  const events = useMemo(() => {
-    const merged = [...loadLocalEvents(), ...MOCK_EVENTS];
-    return merged.map(normalizeEventForFeed).filter(Boolean);
+  // mock events
+  // const events = useMemo(() => {
+  //   const merged = [...loadLocalEvents(), ...MOCK_EVENTS];
+  //   return merged.map(normalizeEventForFeed).filter(Boolean);
+  // }, [pathname]);
+
+  const [events, setEvents] = useState([]);
+
+  // Fetch live data from PostgreSQL on mount
+  useEffect(() => {
+    async function loadLiveFeed() {
+      try {
+        const liveEvents = await fetchFeed();
+        // The mapping function in api.js already normalizes the tags
+        setEvents(liveEvents.filter(Boolean));
+      } catch (error) {
+        console.error('Error fetching live feed:', error);
+      }
+    }
+    loadLiveFeed();
   }, [pathname]);
 
   const joinedIds = useMemo(() => new Set(joinedEventIds), [joinedEventIds]);
@@ -155,8 +173,33 @@ export default function Feed() {
     return result;
   }, [events, selectedTags, selectedDate, myPlansOnly, joinedIds]);
 
-  const handleJoin = (event) => {
-    joinEvent(event.id);
+  // mock handle join
+  // const handleJoin = (event) => {
+  //   joinEvent(event.id);
+  // };
+
+  const handleJoin = async (event) => {
+    try {
+      // Using user ID 1 as our placeholder until auth is fully hooked up
+      const currentUserId = 1; 
+      // Capture the returned data from your API
+      const data = await apiJoinEvent(event.id, currentUserId);
+      
+      // Print the success message to the console
+      console.log(`Success! New member count is: ${data.current_members}`);
+      
+      // Update local session state so the UI button changes to "Joined"
+      joinEvent(event.id);
+      
+      // Instantly update the specific event card's headcount in React state
+      setEvents((prevEvents) => 
+        prevEvents.map((e) => 
+          e.id === event.id ? { ...e, joinedCount: data.current_members } : e
+        )
+      );
+    } catch (error) {
+      console.error('Failed to join event in database:', error);
+    }
   };
 
   const handleLike = (event) => {

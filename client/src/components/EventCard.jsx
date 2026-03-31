@@ -111,7 +111,18 @@ export default function EventCard({
   const userInits = getProfileInitials(profile?.name);
 
   const avatarSlots = useMemo(() => {
+    // 1. If the database provided the full members array, slice the first 3 to display
+    if (event.members && event.members.length > 0) {
+      return event.members.slice(0, 3).map((member) => ({
+        url: member.avatarUrl,
+        initials: member.initials || '?',
+      }));
+    }
+
+    // 2. Fallback: If the members array isn't loaded on this screen yet, 
+    // show the Organizer and the Current User (if they joined)
     const slots = [];
+    
     if (isCreatedByUser) {
       slots.push({
         url: userPic,
@@ -123,17 +134,17 @@ export default function EventCard({
         initials: organizer?.avatarUrl ? null : organizerInitials,
       });
     }
+
     if (isJoined && !isCreatedByUser) {
       slots.push({
         url: userPic,
         initials: userPic ? null : userInits,
       });
-    } else {
-      slots.push({ url: AVATAR_URLS[0], initials: null });
     }
-    slots.push({ url: AVATAR_URLS[1], initials: null });
+
     return slots;
   }, [
+    event.members,
     isCreatedByUser,
     isJoined,
     organizer?.avatarUrl,

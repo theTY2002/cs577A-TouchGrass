@@ -85,4 +85,60 @@ router.post('/:post_id/join', async (req, res) => {
     }
 });
 
+// GET: Retrieve a single event by ID and its members
+router.get('/:post_id', async (req, res) => {
+    const postId = parseInt(req.params.post_id);
+    try {
+        // 1. Fetch the main event details
+        const eventQuery = `
+            SELECT 
+                p.p_id AS post_id, 
+                p.title, 
+                p.datetime_start AS date, 
+                p.location_text AS location,
+                p.plan_text AS description, 
+                p.tags, 
+                p.capacity AS max_members, 
+                p.status,
+                SPLIT_PART(u.email, '@', 1) AS author_name,
+                COUNT(gm.user_id)::int AS current_members
+            FROM posts p
+            JOIN users u ON p.owner_user_id = u.u_id
+            LEFT JOIN groups g ON p.p_id = g.post_id
+            LEFT JOIN group_members gm ON g.g_id = gm.group_id
+            WHERE p.p_id = $1
+            GROUP BY p.p_id, u.email;
+        `;
+        const eventResult = await pool.query(eventQuery, [postId]);
+        
+        if (eventResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+
+        const eventData = eventResult.rows[0];
+
+        // 2. Fetch the specific members of this event's group
+        const membersQuery = `
+            SELECT 
+                u.u_id AS id, 
+                SPLIT_PART(u.email, '@', 1) AS name, 
+                up.avatar_url
+            FROM group_members gm
+            JOIN groups g ON gm.group_id = g.g_id
+            JOIN users u ON gm.user_id = u.u_id
+            LEFT JOIN user_profiles up ON u.u_id = up.user_id
+            WHERE g.post_id = $1;
+        `;
+        const membersResult = await pool.query(membersQuery, [postId]);
+
+        // 3. Attach the members array to the event object
+        eventData.members = membersResult.rows;
+
+        res.json(eventData);
+    } catch (error) {
+        console.error('Error fetching single event:', error);
+        res.status(500).json({ error: 'Failed to fetch event details' });
+    }
+});
+
 module.exports = router;

@@ -20,7 +20,7 @@ The platform is powered by user-contributed content: anyone can post events, and
 
 | Directory              | Description                                                       |
 | ---------------------- | ----------------------------------------------------------------- |
-| [`client/`](./client/) | Frontend UI (React + Vite) — runs at `http://localhost:5000`      |
+| [`client/`](./client/) | Frontend UI (React + Vite) — runs at `http://localhost:5174` (see `client/vite.config.js`) |
 | [`server/`](./server/) | Backend API (Node.js + Express) — runs at `http://localhost:5001` |
 
 ---
@@ -29,6 +29,7 @@ The platform is powered by user-contributed content: anyone can post events, and
 
 | Guide | Description |
 | ----- | ----------- |
+| [**Multi-agent collaboration**](./docs/AGENT_COLLABORATION.md) | Rules for AI/human contributors: ground truth, avoiding duplicate code, DB workflow, parallel git hygiene |
 | [**UI / UX overview**](./docs/UI_UX.md) | Screen map, layout, design patterns, and where features live in the frontend |
 | [**Frontend session & auth**](./docs/FRONTEND_SESSION_AND_AUTH.md) | Session context, route guards (`RequireAuth`), and how to connect real backend auth and API middleware |
 | [**Gitflow**](./docs/Gitflow.md) | Branching model; links to the full workflow doc |
@@ -42,7 +43,9 @@ The platform is powered by user-contributed content: anyone can post events, and
 
 1. **Backend:** `cd server && npm install && npm start`
 2. **Frontend:** `cd client && npm install && npm run dev`
-3. Open [http://localhost:5000](http://localhost:5000) in your browser
+3. Open [http://localhost:5174](http://localhost:5174) in your browser
+
+The Vite dev server proxies `/api` to the Express API on **port 5001**, so the client can call `/api/...` without hardcoding the backend URL. Optional: set `VITE_API_BASE` if you need an absolute API origin.
 
 See each directory's README for more details.
 

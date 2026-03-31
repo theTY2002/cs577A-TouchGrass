@@ -12,19 +12,19 @@ The client does **not** use Express-style “middleware” in the Node sense. In
 
 | Piece | Role |
 |--------|------|
-| **`SessionProvider`** | React Context that holds **in-memory** session state: whether the user is signed in, a small **user** snapshot (`email`, optional `displayName` / `username`), **joined event ids** for UI, and optional **UI preferences**. |
+| **`SessionProvider`** | React Context: **`signedIn`**, **`sessionReady`**, a **user** snapshot from the API (`id`, `email`, display fields), **joined event ids** for UI, optional **UI preferences**, and auth actions. |
 | **`RequireAuth`** | A **route guard**: a wrapper component that checks `signedIn` from the session. If the user is not signed in, it renders a redirect to `/login` and passes `state.from` so login can return them to the page they tried to open. |
-| **`useSession()`** | Hook used by pages and components to read session data and call **`signIn`**, **`signOut`**, **`joinEvent`**, **`leaveEvent`**, **`toggleEventMembership`**, **`isJoinedToEvent`**, **`updateSessionUser`**, **`setUiPreference`**. |
+| **`useSession()`** | Hook for session data and **`signIn`**, **`signOut`**, **`joinEvent`**, **`leaveEvent`**, **`toggleEventMembership`**, **`isJoinedToEvent`**, **`updateSessionUser`**, **`setUiPreference`**. |
 
-Implementation: [`client/src/SessionContext.jsx`](../client/src/SessionContext.jsx). The provider is mounted in [`client/src/main.jsx`](../client/src/main.jsx) **inside** `BrowserRouter` so guards can use routing hooks.
+Implementation: [`client/src/tools/cache/SessionContext.jsx`](../client/src/tools/cache/SessionContext.jsx). The provider is mounted in [`client/src/main.jsx`](../client/src/main.jsx) **inside** `BrowserRouter` so guards can use routing hooks.
 
-This layer is intentionally **frontend-only** today: it simulates a session for UX (gated routes, join/chat behavior) **without** storing passwords or tokens in `localStorage`. Refresh clears in-memory session. For background on product-facing behavior, see [UI / UX overview](./UI_UX.md).
+**Auth today:** login/signup call the Express API (`loginWithApi` / `signup` in [`client/src/tools/api.js`](../client/src/tools/api.js)). A **Bearer token** is stored in `localStorage` (`touchgrass_session_token`). On load, the provider calls **`GET /api/auth/me`** with that token to restore the user. Passwords are not stored client-side. For product-facing UX notes, see [UI / UX overview](./UI_UX.md).
 
-### On the server: real middleware (future)
+**Dev URLs:** the Vite app runs at **`http://localhost:5174`**; `/api` is proxied to **`http://localhost:5001`** (see [`client/vite.config.js`](../client/vite.config.js)).
 
-When you add a backend, **middleware** usually means **Express (or similar) functions** that run on each request **before** your route handlers—for example to parse cookies, verify a JWT, attach `req.user`, or reject unauthenticated requests.
+### On the server: middleware
 
-The React **`RequireAuth`** guard only affects what the **browser** shows. It does **not** secure your API. **Every sensitive API route must still be protected on the server** (middleware + session/JWT validation).
+The Express app uses **middleware** (for example `Authorization: Bearer` validation) on protected JSON routes. The React **`RequireAuth`** guard only affects what the **browser** shows; **every sensitive API route must still be protected on the server**.
 
 ---
 
@@ -48,8 +48,8 @@ The root path `/` redirects to `/feed` or `/login` based on `signedIn` (see `Roo
 Roughly what `useSession()` exposes:
 
 - **`signedIn`** — boolean.
-- **`user`** — `null` or `{ email, displayName?, username? }` (minimal profile for UI; not a full server user model).
-- **`joinedEventIds`** — string ids the current simulated user has “joined” (unlocks chat where the UI requires membership).
+- **`user`** — `null` or `{ id?, email, displayName?, username? }` (from API / `signIn`).
+- **`joinedEventIds`** — string ids the current user has “joined” for UI (unlocks chat where required).
 - **`uiPreferences`** — small key/value bag for frontend-only preferences (`setUiPreference`).
 - **Actions** — `signIn`, `signOut`, `updateSessionUser`, `joinEvent`, `leaveEvent`, `toggleEventMembership`, `isJoinedToEvent`.
 
@@ -97,20 +97,14 @@ On successful login, return a **safe** user payload (id, email, display name—n
 
 ### 3. Bootstrap the client session on load
 
-On app startup (inside `SessionProvider` or a small child effect):
-
-1. Call **`GET /api/me`** (or `/api/session`) **with credentials** (`fetch(..., { credentials: 'include' })`).
-2. If **200**, call your existing **`signIn`-equivalent** (or set internal state) with the user fields from the response.
-3. If **401**, leave `signedIn` false.
-
-That replaces the purely local `signIn` used after the placeholder login form, while **`useSession()`** can stay the same for the rest of the app.
+On app startup, `SessionProvider` reads the stored token and calls **`GET /api/auth/me`** with an **`Authorization: Bearer`** header. If the user is returned, session state is set; if not, `signedIn` stays false. Cookie-only sessions would use **`fetch(..., { credentials: 'include' })`** instead; this repo uses the Bearer header from [`client/src/tools/api.js`](../client/src/tools/api.js).
 
 ### 4. Wire the login form to the API
 
 In [`client/src/pages/Login.jsx`](../client/src/pages/Login.jsx), replace the simulated delay with:
 
 - `POST /api/auth/login` with `{ email, password }`.
-- On success: either rely on **bootstrap** (`GET /api/me`) to populate session state, or pass the returned user into **`signIn({ ... })`** if the API returns a public profile (still no secrets in `localStorage`).
+- On success: the API returns a token; the client stores it and **`signIn`** hydrates from the login response (see `SessionContext.jsx`).
 
 Keep **`Navigate`** / `state.from` behavior so deep links keep working.
 
@@ -119,20 +113,15 @@ Keep **`Navigate`** / `state.from` behavior so deep links keep working.
 In [`client/src/components/Header.jsx`](../client/src/components/Header.jsx), **`signOut`** should:
 
 - Call **`POST /api/auth/logout`** with credentials.
-- Clear client state (already done in `signOut` in `SessionContext.jsx`).
+- Clear client state and token (see `signOut` / `logoutWithApi` in `SessionContext.jsx` and `api.js`).
 
 ### 6. Join / leave events
 
-Today, **membership** is simulated in memory. With a backend:
-
-- **`POST /api/events/:id/join`** / **`DELETE`** (or similar) — server records membership; middleware ensures the user is authenticated.
-- On success, update client state with **`joinEvent(id)`** / **`leaveEvent(id)`** or refetch **`GET /api/me`** / **`GET /api/events/:id/me`** so UI stays in sync.
-
-Until then, the UI still demonstrates **locked chat until joined** using frontend state only.
+**Join** calls **`POST /api/events/:id/join`** with the current user id; the client also updates **`joinEvent(id)`** in session state for immediate UI. Chat remains locked until joined (or organizer), per `useSession`.
 
 ### 7. `fetch` / API client
 
-Centralize API calls (e.g. [`client/src/api.js`](../client/src/api.js)) with **`credentials: 'include'`** for cookie sessions. Handle **401** globally if you want to redirect to login from API failures (optional “API middleware” on the client—usually an interceptor).
+Centralize API calls in [`client/src/tools/api.js`](../client/src/tools/api.js). In development, **`API_BASE`** is empty so requests go to **`/api/...`** on the Vite origin (**5174**); Vite proxies **`/api`** to the Express server (**5001**). Set **`VITE_API_BASE`** for an absolute API URL in other environments. Auth uses the **`Authorization: Bearer`** header when a token is present.
 
 ---
 
@@ -140,10 +129,11 @@ Centralize API calls (e.g. [`client/src/api.js`](../client/src/api.js)) with **`
 
 | File | Purpose |
 |------|---------|
-| [`client/src/SessionContext.jsx`](../client/src/SessionContext.jsx) | `SessionProvider`, `useSession`, `RequireAuth` |
-| [`client/src/main.jsx`](../client/src/main.jsx) | Provider order: `SessionProvider` → `ProfileSettingsProvider` → … |
+| [`client/src/tools/cache/SessionContext.jsx`](../client/src/tools/cache/SessionContext.jsx) | `SessionProvider`, `useSession`, `RequireAuth` |
+| [`client/src/tools/api.js`](../client/src/tools/api.js) | Auth, feed, events, `fetch` helpers |
+| [`client/src/main.jsx`](../client/src/main.jsx) | Provider order: `SessionProvider` → … |
 | [`client/src/App.jsx`](../client/src/App.jsx) | Which routes use `RequireAuth` |
-| [`client/src/pages/Login.jsx`](../client/src/pages/Login.jsx) | Entry point for replacing placeholder login with API |
+| [`client/src/pages/Login.jsx`](../client/src/pages/Login.jsx) | Login → API |
 | [`client/src/components/Header.jsx`](../client/src/components/Header.jsx) | Sign out |
 
 ---
@@ -152,4 +142,4 @@ Centralize API calls (e.g. [`client/src/api.js`](../client/src/api.js)) with **`
 
 - **Client “middleware”** here means **session context + `RequireAuth` route guards**, not Express middleware.
 - **Server middleware** is where **real authentication** must be enforced for APIs.
-- **`SessionProvider` / `useSession`** are the stable integration surface: hydrate from **`/api/me`**, drive login/logout from auth endpoints, and later sync **join** state from event APIs—without rewriting the whole UI.
+- **`SessionProvider` / `useSession`** integrate with **`/api/auth/me`**, login/logout endpoints, and event APIs without rewriting the whole UI.

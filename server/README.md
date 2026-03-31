@@ -85,6 +85,7 @@ Client request  →  Express  →  Route handler  →  Response sent back
 
 - **Port 5001** — The server listens on port 5001 by default. You can change it with the `PORT` environment variable.
 - **localhost** — On your machine, `localhost` (or `127.0.0.1`) points to your own computer, so `http://localhost:5001` means “the app running on this machine, port 5001.”
+- **Full-stack dev** — The Vite client runs at **`http://localhost:5174`** and proxies **`/api`** to this server, so browser requests use the same origin for HTML/JS and `/api/...` for JSON.
 
 ### 5. **Project layout (typical for this directory)**
 

@@ -43,12 +43,12 @@ Shell code: [`client/src/App.jsx`](../client/src/App.jsx).
 ### Feed (`/feed`)
 
 - **Hero** — Full-width image and headline; sets the tone for “discover plans.”
-- **Filters** — Tag pills, date, “my plans,” clear. On **desktop (md+)**, when the user scrolls past the hero, filters **dock into the header** (IntersectionObserver + `FeedFiltersContext`) so filtering stays available without scrolling back up.
+- **Filters** — Tag pills, date, “my plans,” clear. On **desktop (md+)**, when the user scrolls past the hero, filters **dock into the header** (IntersectionObserver + [`FeedFiltersContext`](../client/src/tools/context/FeedFiltersContext.jsx)) so filtering stays available without scrolling back up.
 - **Mobile filters** — Same controls in a **sheet/menu** from the header (not docked in the bar).
 - **Event grid** — `EventCard` tiles: image-first, like/join actions, navigation to details.
 - **FAB** — Floating **create** control (bottom-right, safe-area aware) → create event flow.
 
-State and ideas: merged **local** user-created events + **mock** catalog; **likes** use **localStorage** per event id; **join** state for the current user is tracked in **session memory** (`useSession`) and stays in sync between feed and event details.
+State and ideas: feed data comes from the **API** (paginated via [`client/src/tools/api.js`](../client/src/tools/api.js)); **join** state for the current user is tracked in **session** (`useSession`) and stays in sync between feed and event details.
 
 ### Event details (`/event/:id`)
 
@@ -68,12 +68,12 @@ Missing ids show a calm **not found** state with return to feed.
 ### Login & signup (`/login`, `/signup`)
 
 - **Split screen**: brand/hero side + form side; distinct from the main app chrome (no global header).
-- Auth is **front-end session** oriented today (`SessionContext.jsx`, `RequireAuth`); see [**Frontend session & auth**](./FRONTEND_SESSION_AND_AUTH.md) for how this maps to backend middleware and APIs.
+- Auth uses **API-backed session** ([`client/src/tools/cache/SessionContext.jsx`](../client/src/tools/cache/SessionContext.jsx), `RequireAuth`); see [**Frontend session & auth**](./FRONTEND_SESSION_AND_AUTH.md).
 
 ### Settings (`/settings`)
 
 - Single scrollable **account** surface: name, bio-style fields, **avatar** upload (resized client-side), preferences.
-- Data persists **locally** until a profile API exists (`profileSettingsStorage` + `ProfileSettingsContext`).
+- Data persists **locally** (`client/src/tools/context/profileSettingsStorage.js` + `ProfileSettingsContext.jsx`) until a profile API exists.
 
 ### Help (`/help`)
 
@@ -111,12 +111,12 @@ Source of truth: [`client/tailwind.config.js`](../client/tailwind.config.js), [`
 |------|---------------------|
 | Routing & shell | `App.jsx` |
 | Feed composition | `pages/Feed.jsx`, `components/Hero.jsx`, `components/Filters.jsx`, `components/EventCard.jsx`, `components/FAB.jsx` |
-| Filter state | `FeedFiltersContext.jsx` |
+| Filter state | `tools/context/FeedFiltersContext.jsx` |
 | Event detail layout | `pages/EventDetails.jsx`, `EventInfoCard.jsx`, `ChatPanel.jsx`, `AboutCard.jsx`, `MembersCard.jsx` |
 | Forms | `pages/CreateEvent.jsx`, `components/LocationAutocomplete.jsx` |
-| Profile | `pages/Settings.jsx`, `ProfileSettingsContext.jsx`, `profileSettingsStorage.js` |
-| Auth session & route guards | `SessionContext.jsx` (`SessionProvider`, `RequireAuth`, `useSession`), `pages/Login.jsx`, `pages/Signup.jsx` — see [FRONTEND_SESSION_AND_AUTH.md](./FRONTEND_SESSION_AND_AUTH.md) |
-| API stub / future backend | `api.js` |
+| Profile | `pages/Settings.jsx`, `tools/context/ProfileSettingsContext.jsx`, `tools/context/profileSettingsStorage.js` |
+| Auth session & route guards | `tools/cache/SessionContext.jsx` (`SessionProvider`, `RequireAuth`, `useSession`), `pages/Login.jsx`, `pages/Signup.jsx` — see [FRONTEND_SESSION_AND_AUTH.md](./FRONTEND_SESSION_AND_AUTH.md) |
+| API client | `tools/api.js` |
 
 ---
 

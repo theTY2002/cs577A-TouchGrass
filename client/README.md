@@ -12,7 +12,7 @@ npm install
 npm run dev
 ```
 
-Open **http://localhost:5000**.
+Open **http://localhost:5174** (port is set in `vite.config.js`).
 
 For a **route-by-route UI/UX walkthrough** (screens, header behavior, design tokens), see [**docs/UI_UX.md**](../docs/UI_UX.md).
 
@@ -22,14 +22,11 @@ For **signed-in state, protected routes, and wiring a real backend** (session co
 
 ## Session and route guards
 
-The app uses a **frontend session layer** (not server middleware):
+The app uses **`SessionProvider`** / **`useSession()`** in [`src/tools/cache/SessionContext.jsx`](./src/tools/cache/SessionContext.jsx) together with **`RequireAuth`**. Sign-in is backed by the Express auth API: a session **Bearer token** is stored under `touchgrass_session_token` in `localStorage`, and the provider bootstraps the user with **`GET /api/auth/me`**. Joined-event ids and UI preferences remain client-side as before.
 
-- **`SessionProvider`** and **`useSession()`** — in-memory sign-in flag, a small user snapshot, and UI state such as which events the user has joined (`client/src/SessionContext.jsx`).
 - **`RequireAuth`** — wraps routes that should only appear for signed-in users; anonymous visitors are redirected to `/login` with a return path.
 
-Auth secrets are **not** stored in `localStorage`. Refresh clears the simulated session.
-
-When you add a backend, keep **`useSession` / `RequireAuth`** as the UI boundary and hydrate session from **`GET /api/me`** (or equivalent) after cookie-based login; protect JSON routes with **Express middleware** on the server. Full steps are in [**docs/FRONTEND_SESSION_AND_AUTH.md**](../docs/FRONTEND_SESSION_AND_AUTH.md).
+API calls live in [`src/tools/api.js`](./src/tools/api.js). In dev, **`npm run dev`** serves the app on **5174** and proxies **`/api`** to **`http://localhost:5001`** (see `vite.config.js`). More detail: [**docs/FRONTEND_SESSION_AND_AUTH.md**](../docs/FRONTEND_SESSION_AND_AUTH.md).
 
 ---
 
@@ -37,7 +34,7 @@ When you add a backend, keep **`useSession` / `RequireAuth`** as the UI boundary
 
 | Command         | Description                      |
 |-----------------|----------------------------------|
-| `npm run dev`   | Dev server (port 5000)           |
+| `npm run dev`   | Dev server (port **5174**, Vite) |
 | `npm run build` | Production build                 |
 | `npm run preview` | Preview production build       |
 | `npm run lint`  | ESLint                           |
@@ -84,7 +81,8 @@ imageUrl: `https://images.unsplash.com/photo-ID?w=600&q=80`
 | File/Folder           | Purpose                               |
 |-----------------------|---------------------------------------|
 | `src/App.jsx`         | Routes and `RequireAuth`-wrapped pages |
-| `src/SessionContext.jsx` | In-memory session, `useSession`, `RequireAuth` |
+| `src/tools/cache/SessionContext.jsx` | Session + `useSession`, `RequireAuth`; API auth |
+| `src/tools/api.js`    | `fetch` helpers for `/api/*` (proxy → server in dev) |
 | `src/components/Header.jsx` | Sticky header                     |
 | `src/components/Hero.jsx`   | Full-bleed photo hero            |
 | `src/components/Filters.jsx` | Story-like pills, date, My Event |
@@ -108,4 +106,4 @@ imageUrl: `https://images.unsplash.com/photo-ID?w=600&q=80`
 
 ## Backend
 
-Server runs at http://localhost:5001. Run client and server in separate terminals for full-stack dev.
+The API listens at **http://localhost:5001** by default. Run client and server in separate terminals for full-stack dev; the Vite dev server proxies `/api` to that origin.

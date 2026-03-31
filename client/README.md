@@ -14,6 +14,23 @@ npm run dev
 
 Open **http://localhost:5000**.
 
+For a **route-by-route UI/UX walkthrough** (screens, header behavior, design tokens), see [**docs/UI_UX.md**](../docs/UI_UX.md).
+
+For **signed-in state, protected routes, and wiring a real backend** (session context vs Express middleware, `/api/me` bootstrap, login/logout), see [**docs/FRONTEND_SESSION_AND_AUTH.md**](../docs/FRONTEND_SESSION_AND_AUTH.md).
+
+---
+
+## Session and route guards
+
+The app uses a **frontend session layer** (not server middleware):
+
+- **`SessionProvider`** and **`useSession()`** — in-memory sign-in flag, a small user snapshot, and UI state such as which events the user has joined (`client/src/SessionContext.jsx`).
+- **`RequireAuth`** — wraps routes that should only appear for signed-in users; anonymous visitors are redirected to `/login` with a return path.
+
+Auth secrets are **not** stored in `localStorage`. Refresh clears the simulated session.
+
+When you add a backend, keep **`useSession` / `RequireAuth`** as the UI boundary and hydrate session from **`GET /api/me`** (or equivalent) after cookie-based login; protect JSON routes with **Express middleware** on the server. Full steps are in [**docs/FRONTEND_SESSION_AND_AUTH.md**](../docs/FRONTEND_SESSION_AND_AUTH.md).
+
 ---
 
 ## Commands
@@ -66,7 +83,8 @@ imageUrl: `https://images.unsplash.com/photo-ID?w=600&q=80`
 
 | File/Folder           | Purpose                               |
 |-----------------------|---------------------------------------|
-| `src/App.jsx`         | Main app, filtering, like/join state  |
+| `src/App.jsx`         | Routes and `RequireAuth`-wrapped pages |
+| `src/SessionContext.jsx` | In-memory session, `useSession`, `RequireAuth` |
 | `src/components/Header.jsx` | Sticky header                     |
 | `src/components/Hero.jsx`   | Full-bleed photo hero            |
 | `src/components/Filters.jsx` | Story-like pills, date, My Event |

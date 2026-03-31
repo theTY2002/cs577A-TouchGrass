@@ -2,7 +2,7 @@
  * Global styles + Tailwind. Edit @theme and :root for palette.
  * Hero overlay: linear-gradient(90deg, rgba(116,136,115,0.42), rgba(209,169,128,0.22))
  */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Nabla&family=Poppins:wght@700&display=swap');
 @import "tailwindcss";
 @config "../tailwind.config.js";
 
@@ -10,14 +10,17 @@
   --color-brand-forest: #748873;
   --color-brand-terracotta: #D1A980;
   --color-paper: #E5E0D8;
-  --color-cream: #F8F8F8;
+  --color-cream: #F7F8F6;
+  --color-page: #F7F8F6;
 }
+
 
 :root {
   --brand-forest: #748873;
   --brand-terracotta: #D1A980;
   --bg-paper: #E5E0D8;
-  --bg-white: #F8F8F8;
+  --bg-white: #F7F8F6;
+  --page-bg: #F7F8F6;
   /* Hero overlay - edit for duotone tint */
   --hero-overlay: linear-gradient(90deg, rgba(116,136,115,0.42), rgba(209,169,128,0.22));
 }
@@ -39,6 +42,15 @@
 /* Hero headline drop shadow */
 .text-shadow-hero {
   text-shadow: 0 2px 12px rgba(0,0,0,0.25);
+}
+
+/* Event detail hero title: readable on bright / high-key photos */
+.text-shadow-hero-title {
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.55),
+    0 2px 8px rgba(0, 0, 0, 0.45),
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 0 48px rgba(0, 0, 0, 0.25);
 }
 
 @keyframes fadeSlide {
@@ -68,6 +80,28 @@
   animation: cardEnter 0.5s ease-out forwards;
 }
 
+/* Navbar filter bar dock (discover scroll) */
+@keyframes filterDockIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-filter-dock-in {
+  animation: filterDockIn 0.28s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-filter-dock-in {
+    animation: none;
+  }
+}
+
 /* Heart like animation */
 @keyframes heartPop {
   0% { transform: scale(1); }
@@ -93,3 +127,4 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+

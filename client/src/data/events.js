@@ -2,8 +2,10 @@
  * Mock event data. Edit to add/modify events.
  * Each event: id, title, organizer {name, initials, avatarUrl}, description, location, datetime, capacity, joinedCount, tags, imageUrl, likes, comments
  */
-const UNSPLASH = (id, w = 600) =>
+export const unsplashPhoto = (id, w = 600) =>
   `https://images.unsplash.com/photo-${id}?w=${w}&q=80`;
+
+const UNSPLASH = unsplashPhoto;
 
 export const MOCK_EVENTS = [
   {
@@ -16,7 +18,7 @@ export const MOCK_EVENTS = [
     capacity: 8,
     joinedCount: 3,
     tags: ['Study'],
-    imageUrl: UNSPLASH('1521587760476-6c12a7b3f4b7'),
+    imageUrl: UNSPLASH('1481627834876-b7833e8f5570'),
     likes: 12,
     comments: 4,
   },
@@ -44,7 +46,7 @@ export const MOCK_EVENTS = [
     capacity: 12,
     joinedCount: 7,
     tags: ['Hiking'],
-    imageUrl: UNSPLASH('1551632816-2b3f7b94f133'),
+    imageUrl: UNSPLASH('1719425620991-fddb6534f82f'),
     likes: 38,
     comments: 11,
   },
@@ -58,7 +60,7 @@ export const MOCK_EVENTS = [
     capacity: 10,
     joinedCount: 6,
     tags: ['Food', 'Gaming'],
-    imageUrl: UNSPLASH('1611892440504-74a515e2b3c5'),
+    imageUrl: UNSPLASH('1513104890138-7c749659a591'),
     likes: 19,
     comments: 5,
   },

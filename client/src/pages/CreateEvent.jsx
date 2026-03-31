@@ -15,6 +15,7 @@ import {
 } from '../tools/cache/localEventsStorage';
 import LocationAutocomplete from '../components/LocationAutocomplete';
 import { FEED_HERO_IMAGE } from '../components/Hero';
+import { createEvent } from '../tools/api';
 
 const ALL_TAGS = ['Study', 'Coffee', 'Hiking', 'Food', 'Gaming', 'Music', 'Party', 'Sports', 'Event'];
 
@@ -255,7 +256,25 @@ export default function EventForm() {
     }
   };
 
-  const handleSave = () => {
+  // const handleSave = () => {
+  //   if (isEdit) {
+  //     if (isLocalUserEventId(id)) {
+  //       const prev = getEventById(id);
+  //       if (prev) {
+  //         updateLocalEvent(buildEventFromForm(form, contactEmail, prev));
+  //       }
+  //     }
+  //     navigate(`/event/${id}`);
+  //     return;
+  //   }
+  //   if (dateInPastError || (form.date && form.date < todayISODateLocal())) {
+  //     return;
+  //   }
+  //   const newEvent = buildEventFromForm(form, contactEmail);
+  //   appendLocalEvent(newEvent);
+  //   setCreateSuccessEmail(contactEmail);
+  // };
+  const handleSave = async () => {
     if (isEdit) {
       if (isLocalUserEventId(id)) {
         const prev = getEventById(id);
@@ -269,9 +288,23 @@ export default function EventForm() {
     if (dateInPastError || (form.date && form.date < todayISODateLocal())) {
       return;
     }
-    const newEvent = buildEventFromForm(form, contactEmail, user);
-    appendLocalEvent(newEvent);
-    setCreateSuccessEmail(contactEmail);
+
+    try {
+      const eventPayload = {
+        owner_user_id: user?.id ?? 1,
+        title: form.title,
+        tags: form.tags.join(','),
+        datetime_start: form.date ? new Date(form.date).toISOString() : null,
+        location_text: form.location,
+        plan_text: form.details,
+        capacity: 10,
+      };
+
+      await createEvent(eventPayload);
+      setCreateSuccessEmail(contactEmail);
+    } catch (error) {
+      console.error('Database failed to create event:', error);
+    }
   };
 
   useEffect(() => {

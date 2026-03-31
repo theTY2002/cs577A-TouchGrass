@@ -5,7 +5,8 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useLayoutEffect } from 'react';
 import { setTouchGrassTitle } from '../tools/ui/documentTitle';
-import { getEventById, isLocalUserEventId, DEMO_USER_OWNED_EVENT_ID } from '../tools/cache/localEventsStorage';
+import { getEvent } from '../tools/api';
+import { isLocalUserEventId, DEMO_USER_OWNED_EVENT_ID } from '../tools/cache/localEventsStorage';
 import EventInfoCard from '../components/EventInfoCard';
 import ChatPanel from '../components/ChatPanel';
 import AboutAboveChatCard from '../components/AboutCard';
@@ -30,20 +31,34 @@ export default function EventDetails() {
   const [chatOpen, setChatOpen] = useState(false);
 
   useEffect(() => {
-    const found = getEventById(id);
-    setEvent(found || null);
-    setLookupDone(true);
+    async function fetchEventDetails() {
+      try {
+        // Fetch the live data from PostgreSQL!
+        const fetchedEvent = await getEvent(id);
+        setEvent(fetchedEvent);
+      } catch (error) {
+        console.error("Could not fetch event:", error);
+        setEvent(null);
+      } finally {
+        setLookupDone(true);
+      }
+    }
+    
+    fetchEventDetails();
   }, [id]);
 
   useLayoutEffect(() => {
-    const found = getEventById(id);
-    if (!found) {
-      setTouchGrassTitle(lookupDone ? 'Event not found' : 'Event');
+    if (!lookupDone) {
+      setTouchGrassTitle('Loading...');
       return;
     }
-    const name = (found.title || 'Event').trim() || 'Event';
+    if (!event) {
+      setTouchGrassTitle('Event not found');
+      return;
+    }
+    const name = (event.title || 'Event').trim() || 'Event';
     setTouchGrassTitle(name.length > 80 ? `${name.slice(0, 77)}…` : name);
-  }, [id, lookupDone]);
+  }, [event, lookupDone]);
 
   if (!lookupDone) {
     return (

@@ -22,8 +22,11 @@ export default function MembersCard({ event, joined, organizer }) {
     isLocal: true,
   };
 
-  const members = [...MOCK_MEMBERS];
-  if (joined && !members.some((m) => m.isLocal)) {
+  // Pull the real members array from the event, or fallback to an empty array
+  const members = event?.members ? [...event.members] : [];
+    
+  // We keep this so the UI instantly shows "You" when you click join before refreshing
+  if (joined && !members.some((m) => m.isLocal || m.name === 'You')) {
     members.unshift(localUser);
   }
   const orgName = typeof organizer === 'string' ? organizer : organizer?.name;

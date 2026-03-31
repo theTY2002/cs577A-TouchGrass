@@ -199,7 +199,14 @@ export default function Feed() {
   const handleJoin = async (event) => {
     try {
       if (user?.id != null) {
-        await joinEventApi(event.id, user.id);
+        const data = await joinEventApi(event.id, user.id);
+        if (data?.current_members != null) {
+          setEvents((prev) =>
+            prev.map((e) =>
+              e.id === event.id ? { ...e, joinedCount: data.current_members } : e,
+            ),
+          );
+        }
       }
     } catch {
       /* still update local session for UX */

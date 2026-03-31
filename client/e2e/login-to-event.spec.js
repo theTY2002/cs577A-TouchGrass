@@ -1,11 +1,11 @@
 /**
  * E2E: Login → Feed → Click "View details" on first event.
- * Requires: Vite dev server on :5000 (no backend).
+ * Requires: Vite dev server on :5174 (no backend).
  * Run: npm run test:e2e
  */
 import { test, expect } from '@playwright/test';
 
-const BASE_URL = 'http://localhost:5000';
+const BASE_URL = 'http://localhost:5174';
 
 test('travel from login to event details', async ({ page }) => {
   // 1. Root URL sends anonymous users to login (no sign-up flow yet)

@@ -3,19 +3,19 @@
  */
 import { useParams, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { setTouchGrassTitle } from '../documentTitle';
-import { useSession } from '../SessionContext';
-import { FALLBACK_CONTACT_LOCALPART } from '../sessionDefaults';
+import { setTouchGrassTitle } from '../tools/ui/documentTitle';
+import { useSession } from '../tools/cache/SessionContext';
+import { FALLBACK_CONTACT_LOCALPART } from '../tools/cache/sessionDefaults';
 import {
   appendLocalEvent,
   buildEventFromForm,
   getEventById,
   isLocalUserEventId,
   updateLocalEvent,
-} from '../localEventsStorage';
+} from '../tools/cache/localEventsStorage';
 import LocationAutocomplete from '../components/LocationAutocomplete';
 import { FEED_HERO_IMAGE } from '../components/Hero';
-import { createEvent } from '../api';
+import { createEvent } from '../tools/api';
 
 const ALL_TAGS = ['Study', 'Coffee', 'Hiking', 'Food', 'Gaming', 'Music', 'Party', 'Sports', 'Event'];
 
@@ -276,7 +276,12 @@ export default function EventForm() {
   // };
   const handleSave = async () => {
     if (isEdit) {
-      // We will handle editing later; let's focus on creation first
+      if (isLocalUserEventId(id)) {
+        const prev = getEventById(id);
+        if (prev) {
+          updateLocalEvent(buildEventFromForm(form, contactEmail, user, prev));
+        }
+      }
       navigate(`/event/${id}`);
       return;
     }
@@ -285,24 +290,20 @@ export default function EventForm() {
     }
 
     try {
-      // Map the React state to the PostgreSQL schema we built
       const eventPayload = {
-        owner_user_id: user?.id || 1, // Fallback to test user 1
+        owner_user_id: user?.id ?? 1,
         title: form.title,
-        tags: form.tags.join(','), // DB expects a comma-separated string
+        tags: form.tags.join(','),
         datetime_start: form.date ? new Date(form.date).toISOString() : null,
         location_text: form.location,
         plan_text: form.details,
-        capacity: 10 // Setting a default capacity for now
+        capacity: 10,
       };
 
-      // Send the POST request to your Express server
       await createEvent(eventPayload);
-      
       setCreateSuccessEmail(contactEmail);
     } catch (error) {
       console.error('Database failed to create event:', error);
-      // You could set an error state here to show a toast/alert to the user
     }
   };
 

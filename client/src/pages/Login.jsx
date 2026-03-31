@@ -3,14 +3,14 @@
  */
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useSession } from '../SessionContext';
-import { setTouchGrassTitle } from '../documentTitle';
+import { useSession } from '../tools/cache/SessionContext';
+import { setTouchGrassTitle } from '../tools/ui/documentTitle';
 import { TouchGrassMark } from '../components/TouchGrassIcon';
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { signedIn, signIn } = useSession();
+  const { signedIn, signInWithPassword } = useSession();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -41,7 +41,6 @@ export default function Login() {
     }
   }, [location.state]);
 
-  // Log in button: placeholder auth (no server); marks session and navigates home.
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
@@ -49,10 +48,10 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await new Promise((r) => setTimeout(r, 300));
-      signIn({ email: email.trim() });
-    } catch {
-      setError('Something went wrong. Try again.');
+      await signInWithPassword({ email: email.trim(), password });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Something went wrong. Try again.';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -176,7 +175,7 @@ export default function Login() {
               />
             </div>
 
-            {/* Primary login action (local only; no backend). */}
+            {/* Primary login: POST /api/auth/login */}
             <button
               type="submit"
               disabled={loading}

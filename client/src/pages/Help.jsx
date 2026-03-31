@@ -3,7 +3,7 @@
  */
 import { useLayoutEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { setTouchGrassTitle } from '../documentTitle';
+import { setTouchGrassTitle } from '../tools/ui/documentTitle';
 
 function SectionIcon({ children }) {
   return (

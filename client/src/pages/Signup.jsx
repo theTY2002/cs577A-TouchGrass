@@ -4,7 +4,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { TouchGrassMark } from '../components/TouchGrassIcon';
-import { useSession } from '../SessionContext';
+import { useSession } from '../tools/cache/SessionContext';
+import { signUpWithApi } from '../tools/api';
 
 const inputClass =
   'w-full rounded-[10px] border border-[#DBDBDB] bg-white px-4 py-3 text-[15px] text-neutral-900 placeholder:text-neutral-400 outline-none transition-shadow focus:border-brand-forest focus:ring-2 focus:ring-brand-forest/25';
@@ -39,7 +40,6 @@ export default function Signup() {
     if (signedIn) navigate('/', { replace: true });
   }, [signedIn, navigate]);
 
-  // Sign up button: validates locally only, then sends user to login (no server).
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -56,13 +56,19 @@ export default function Signup() {
 
     setLoading(true);
     try {
-      await new Promise((r) => setTimeout(r, 400));
+      await signUpWithApi({
+        email: email.trim(),
+        password,
+        fullName: fullName.trim(),
+        username: username.trim(),
+      });
       navigate('/login', {
         replace: true,
         state: { registered: true, email: email.trim() },
       });
-    } catch {
-      setError('Something went wrong. Try again.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Something went wrong. Try again.';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -200,7 +206,7 @@ export default function Signup() {
               </div>
             </div>
 
-            {/* Primary sign-up action (local flow only; no backend). */}
+            {/* Primary sign-up: POST /api/auth/signup */}
             <button
               type="submit"
               disabled={loading}

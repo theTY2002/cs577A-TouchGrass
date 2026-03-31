@@ -3,13 +3,13 @@
  */
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useSession } from '../SessionContext';
-import { setTouchGrassTitle } from '../documentTitle';
-import { useFeedFilters } from '../FeedFiltersContext';
+import { useSession } from '../tools/cache/SessionContext';
+import { setTouchGrassTitle } from '../tools/ui/documentTitle';
+import { useFeedFilters } from '../tools/context/FeedFiltersContext';
 import Filters, { MobileFeedFiltersMenu } from './Filters';
 import { TouchGrassLogoImg } from './TouchGrassIcon';
-import { getProfileInitials } from '../profileSettingsStorage';
-import { useProfileSettings } from '../ProfileSettingsContext';
+import { getProfileInitials } from '../tools/context/profileSettingsStorage';
+import { useProfileSettings } from '../tools/context/ProfileSettingsContext';
 
 function menuItemClass() {
   return 'flex w-full items-center gap-3 px-4 py-2.5 text-sm text-brand-forest hover:bg-bg-paper transition-colors focus:outline-none focus:bg-bg-paper';

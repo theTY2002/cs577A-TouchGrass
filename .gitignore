@@ -5,3 +5,10 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+
+.cursor/
+
+.vscode/
+
+client/node_modules/
+server/node_modules/

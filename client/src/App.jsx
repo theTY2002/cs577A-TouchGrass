@@ -20,7 +20,6 @@ function RootRedirect() {
 function App() {
   const { pathname } = useLocation();
   const hideHeader = pathname === '/login' || pathname === '/signup';
-
   return (
     <div className="min-h-screen bg-page flex flex-col">
       {!hideHeader && <Header />}

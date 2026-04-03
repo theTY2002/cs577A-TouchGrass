@@ -1,4 +1,4 @@
-const { mapFeedRow } = require('./mapFeedRow');
+const { mapFeedRow } = require("./mapFeedRow");
 
 /**
  * @param {import('pg').Pool} pool
@@ -21,7 +21,7 @@ async function queryFeedPage(pool, { spec, userId, offset, limit }) {
 
   if (spec.tags.length > 0) {
     const ors = spec.tags.map((t) => `p.tags ILIKE ${addParam(`%${t}%`)}`);
-    whereParts.push(`(${ors.join(' OR ')})`);
+    whereParts.push(`(${ors.join(" OR ")})`);
   }
 
   if (spec.q) {
@@ -47,9 +47,9 @@ async function queryFeedPage(pool, { spec, userId, offset, limit }) {
     )`);
   }
 
-  const whereSql = whereParts.length ? `WHERE ${whereParts.join(' AND ')}` : '';
+  const whereSql = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
   const orderBy =
-    spec.sort === 'date_asc' ? 'p.datetime_start ASC' : 'p.datetime_start DESC';
+    spec.sort === "date_asc" ? "p.datetime_start ASC" : "p.datetime_start DESC";
 
   const lim = addParam(limitPlusOne);
   const off = addParam(offset);

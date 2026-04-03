@@ -1,8 +1,10 @@
 /**
- * Members card: display joined members (mocked + local user if joined).
+ * Members card: joined members from the event API, plus a temporary "You" row
+ * only when the client thinks you joined but the member list has not caught up yet.
  */
 import { getProfileInitials } from '../tools/context/profileSettingsStorage';
 import { useProfileSettings } from '../tools/context/ProfileSettingsContext';
+import { useSession } from '../tools/cache/SessionContext';
 
 const MOCK_MEMBERS = [
   { name: 'Alex C.', initials: 'AC', avatarUrl: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=80&h=80&fit=crop' },
@@ -13,8 +15,20 @@ const MOCK_MEMBERS = [
 const MAX_VISIBLE_PILLS = 6;
 const STACK_MAX = 5;
 
+function memberLabels(m, currentUserId, orgName) {
+  const isSelf =
+    Boolean(currentUserId) &&
+    m?.id != null &&
+    String(m.id) === currentUserId;
+  const displayName = isSelf ? 'You' : (m.name ?? '');
+  const isOrganizerMember = Boolean(orgName && m.name === orgName);
+  return { isSelf, displayName, isOrganizerMember };
+}
+
 export default function MembersCard({ event, joined, organizer }) {
+  const { user } = useSession();
   const { profile } = useProfileSettings();
+  const currentUserId = user?.id != null ? String(user.id) : null;
   const localUser = {
     name: 'You',
     initials: getProfileInitials(profile?.name),
@@ -24,9 +38,14 @@ export default function MembersCard({ event, joined, organizer }) {
 
   // Pull the real members array from the event, or fallback to an empty array
   const members = event?.members ? [...event.members] : [];
-    
-  // We keep this so the UI instantly shows "You" when you click join before refreshing
-  if (joined && !members.some((m) => m.isLocal || m.name === 'You')) {
+
+  const alreadyListed =
+    (currentUserId &&
+      members.some((m) => m?.id != null && String(m.id) === currentUserId)) ||
+    members.some((m) => m.isLocal || m.name === 'You');
+
+  // Optimistic row only if joined and the server list does not include you yet
+  if (joined && !alreadyListed) {
     members.unshift(localUser);
   }
   const orgName = typeof organizer === 'string' ? organizer : organizer?.name;
@@ -51,12 +70,14 @@ export default function MembersCard({ event, joined, organizer }) {
         </div>
         <div className="flex flex-col items-end gap-2">
           <div className="flex items-center pr-1">
-            {stackMembers.map((m, i) => (
+            {stackMembers.map((m, i) => {
+              const { displayName } = memberLabels(m, currentUserId, orgName);
+              return (
               <div
-                key={`stack-${m.initials}-${i}`}
+                key={`stack-${m.id ?? m.name}-${i}`}
                 className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border-[3px] border-white bg-gradient-to-br from-brand-forest/15 to-brand-terracotta/25 shadow-md transition-transform duration-200 hover:z-20 hover:scale-110"
                 style={{ marginLeft: i === 0 ? 0 : -12 }}
-                title={m.name}
+                title={displayName}
               >
                 {m.avatarUrl ? (
                   <img src={m.avatarUrl} alt="" className="h-full w-full object-cover" />
@@ -66,7 +87,8 @@ export default function MembersCard({ event, joined, organizer }) {
                   </span>
                 )}
               </div>
-            ))}
+            );
+            })}
             {stackOverflow > 0 && (
               <div
                 className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-[3px] border-white bg-stone-100 text-[11px] font-bold text-gray-600 shadow-md"
@@ -81,9 +103,15 @@ export default function MembersCard({ event, joined, organizer }) {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {visiblePills.map((m, i) => (
+        {visiblePills.map((m, i) => {
+          const { displayName, isOrganizerMember } = memberLabels(
+            m,
+            currentUserId,
+            orgName,
+          );
+          return (
           <div
-            key={`${m.initials}-${m.name}-${i}`}
+            key={`${m.id ?? m.name}-${i}`}
             className="group flex items-center gap-2.5 rounded-full border border-stone-200/70 bg-stone-50/60 py-1.5 pl-1.5 pr-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-forest/25 hover:bg-white hover:shadow-md"
           >
             <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-brand-forest/12 to-brand-terracotta/20 ring-2 ring-white shadow-sm">
@@ -96,11 +124,12 @@ export default function MembersCard({ event, joined, organizer }) {
               )}
             </div>
             <span className="max-w-[9rem] truncate text-sm font-semibold text-gray-800">
-              {m.name}
-              {orgName && m.name === orgName ? ' (Organizer)' : ''}
+              {displayName}
+              {isOrganizerMember ? ' (Organizer)' : ''}
             </span>
           </div>
-        ))}
+        );
+        })}
         {overflowPills > 0 && (
           <div
             className="inline-flex items-center rounded-full border border-dashed border-stone-300/90 bg-white/70 px-4 py-2 text-xs font-semibold text-gray-500 transition-colors duration-200 hover:border-brand-forest/30 hover:text-brand-forest"

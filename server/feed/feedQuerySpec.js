@@ -18,20 +18,20 @@ function parseFeedQuerySpec(q) {
   if (query.tags) {
     tags.push(
       ...String(query.tags)
-        .split(',')
+        .split(",")
         .map((s) => s.trim())
         .filter(Boolean),
     );
   } else if (query.tag) {
     tags.push(String(query.tag).trim());
   }
-  const sort = query.sort === 'date_asc' ? 'date_asc' : 'date_desc';
+  const sort = query.sort === "date_asc" ? "date_asc" : "date_desc";
   return {
     tags: tags.filter(Boolean),
-    q: String(query.q || query.search || '').trim(),
+    q: String(query.q || query.search || "").trim(),
     sort,
-    date: String(query.date || '').trim(),
-    my_plans: query.my_plans === '1' || query.my_plans === 'true',
+    date: String(query.date || "").trim(),
+    my_plans: query.my_plans === "1" || query.my_plans === "true",
   };
 }
 

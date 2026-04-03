@@ -2,6 +2,7 @@ const express = require('express');
 const { authenticateUser, createUser } = require('../auth/authService');
 const { createSession, clearSession } = require('../auth/sessionStore');
 const { requireAuth } = require('../middleware/auth');
+const { pool } = require('../db/pool');
 
 const router = express.Router();
 
@@ -65,7 +66,21 @@ router.post('/login', async (req, res) => {
 
 router.get('/me', requireAuth, async (req, res) => {
   console.log(`[auth] /me success user_id=${req.user.id}`);
-  res.json({ user: req.user });
+  let joined_post_ids = [];
+  try {
+    const r = await pool.query(
+      `SELECT DISTINCT g.post_id AS post_id
+       FROM group_members gm
+       INNER JOIN groups g ON g.g_id = gm.group_id
+       WHERE gm.user_id = $1
+       ORDER BY g.post_id`,
+      [req.user.id],
+    );
+    joined_post_ids = r.rows.map((row) => row.post_id);
+  } catch (e) {
+    console.error('[auth] /me joined_post_ids query failed:', e);
+  }
+  res.json({ user: req.user, joined_post_ids });
 });
 
 router.post('/logout', requireAuth, async (req, res) => {

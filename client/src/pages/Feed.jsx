@@ -45,6 +45,7 @@ export default function Feed() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
+  const [joinNotice, setJoinNotice] = useState(null);
   const [hasMore, setHasMore] = useState(true);
   const [nextOffset, setNextOffset] = useState(0);
 
@@ -197,21 +198,27 @@ export default function Feed() {
   }, [events, selectedTags, selectedDate, myPlansOnly, joinedIds, user]);
 
   const handleJoin = async (event) => {
+    if (user?.id == null) return;
+    setJoinNotice(null);
     try {
-      if (user?.id != null) {
-        const data = await joinEventApi(event.id, user.id);
-        if (data?.current_members != null) {
-          setEvents((prev) =>
-            prev.map((e) =>
-              e.id === event.id ? { ...e, joinedCount: data.current_members } : e,
-            ),
-          );
-        }
+      const data = await joinEventApi(event.id, user.id);
+      if (data?.current_members != null) {
+        setEvents((prev) =>
+          prev.map((e) =>
+            e.id === event.id ? { ...e, joinedCount: data.current_members } : e,
+          ),
+        );
       }
-    } catch {
-      /* still update local session for UX */
+      joinEvent(event.id);
+    } catch (e) {
+      const full =
+        e?.status === 409 && e?.code === "GROUP_FULL";
+      setJoinNotice(
+        full
+          ? "This group is full."
+          : e?.message || "Could not join this event.",
+      );
     }
-    joinEvent(event.id);
   };
 
   const handleViewEvent = (event) => {
@@ -271,6 +278,24 @@ export default function Feed() {
               role="alert"
             >
               {error}
+            </div>
+          )}
+
+          {joinNotice && (
+            <div
+              className="mb-6 flex items-start justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+              role="alert"
+              aria-live="polite"
+            >
+              <span>{joinNotice}</span>
+              <button
+                type="button"
+                onClick={() => setJoinNotice(null)}
+                className="shrink-0 rounded-lg px-2 py-0.5 text-xs font-semibold text-amber-900/80 hover:bg-amber-100/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                aria-label="Dismiss notice"
+              >
+                Dismiss
+              </button>
             </div>
           )}
 

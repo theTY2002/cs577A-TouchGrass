@@ -123,6 +123,7 @@ export default function EventForm() {
     title: '',
     date: '',
     location: '',
+    capacity: 10,
     tags: [],
     details: '',
     imageUrl: '',
@@ -135,10 +136,15 @@ export default function EventForm() {
       if (found) {
         const dt = found.datetime || found.dateTime || '';
         const dateStr = dt ? dt.slice(0, 10) : '';
+        const cap = found.capacity ?? found.max_members ?? found.maxMembers;
         setForm({
           title: found.title || '',
           date: dateStr,
           location: found.location || '',
+          capacity:
+            typeof cap === 'number' && Number.isFinite(cap) && cap >= 1
+              ? Math.min(500, Math.floor(cap))
+              : 10,
           tags: found.tags || [],
           details: found.description || '',
           imageUrl: found.imageUrl || '',
@@ -149,6 +155,7 @@ export default function EventForm() {
         title: '',
         date: '',
         location: '',
+        capacity: 10,
         tags: [],
         details: '',
         imageUrl: '',
@@ -290,6 +297,10 @@ export default function EventForm() {
     }
 
     try {
+      const cap = Number(form.capacity);
+      const capacity =
+        Number.isFinite(cap) && cap >= 1 ? Math.min(500, Math.floor(cap)) : 10;
+
       const eventPayload = {
         owner_user_id: user?.id ?? 1,
         title: form.title,
@@ -297,7 +308,7 @@ export default function EventForm() {
         datetime_start: form.date ? new Date(form.date).toISOString() : null,
         location_text: form.location,
         plan_text: form.details,
-        capacity: 10,
+        capacity,
       };
 
       await createEvent(eventPayload);
@@ -454,6 +465,32 @@ export default function EventForm() {
                 />
                 <p className="mt-2 text-xs text-gray-500">
                   We&apos;ll suggest places near you when location is on.
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="event-capacity" className={labelClass}>
+                  Max people
+                </label>
+                <input
+                  id="event-capacity"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={500}
+                  step={1}
+                  value={form.capacity}
+                  onChange={(e) => {
+                    const n = e.target.valueAsNumber;
+                    if (Number.isNaN(n)) return;
+                    handleChange('capacity', Math.min(500, Math.max(1, Math.floor(n))));
+                  }}
+                  className={inputClass}
+                  aria-describedby="event-capacity-hint"
+                />
+                <p id="event-capacity-hint" className="mt-2 text-xs text-gray-500">
+                  Maximum attendees for this plan (default 10). You can change it anytime before the event
+                  fills up.
                 </p>
               </div>
             </section>

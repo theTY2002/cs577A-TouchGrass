@@ -73,10 +73,11 @@ export function SessionProvider({ children }) {
         return;
       }
       try {
-        const u = await fetchCurrentUser(token);
+        const session = await fetchCurrentUser(token);
         if (cancelled) return;
-        if (u) {
-          setUser(mapApiUserToSession(u));
+        if (session?.user) {
+          setUser(mapApiUserToSession(session.user));
+          setJoinedEventIds(session.joinedPostIds);
           setSignedIn(true);
         } else {
           clearStoredSessionToken();
@@ -93,10 +94,11 @@ export function SessionProvider({ children }) {
   }, []);
 
   const signInWithPassword = useCallback(async ({ email, password }) => {
-    const data = await loginWithApi({ email, password });
-    const u = data?.user;
-    if (!u) throw new Error('Invalid response from server');
-    setUser(mapApiUserToSession(u));
+    await loginWithApi({ email, password });
+    const session = await fetchCurrentUser();
+    if (!session?.user) throw new Error('Invalid response from server');
+    setUser(mapApiUserToSession(session.user));
+    setJoinedEventIds(session.joinedPostIds);
     setSignedIn(true);
   }, []);
 

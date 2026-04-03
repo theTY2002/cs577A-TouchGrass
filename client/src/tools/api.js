@@ -188,7 +188,7 @@ export async function fetchFeedPage({
   };
 }
 
-// Join an event
+// Join an event (throws Error with optional .status and .code e.g. GROUP_FULL)
 export async function joinEvent(postId, userId) {
   console.log(`[client/api] joinEvent start postId=${postId} userId=${userId}`);
   const response = await fetch(`${API_BASE}/api/events/${postId}/join`, {
@@ -197,9 +197,38 @@ export async function joinEvent(postId, userId) {
     body: JSON.stringify({ user_id: userId }),
   });
 
-  if (!response.ok) throw new Error("Failed to join event");
+  const data = await parseJsonSafe(response);
+  if (!response.ok) {
+    const err = new Error(data?.error || "Failed to join event");
+    err.code = data?.code;
+    err.status = response.status;
+    throw err;
+  }
   console.log(`[client/api] joinEvent success postId=${postId}`);
-  return response.json();
+  return data || {};
+}
+
+/** Leave an event (authenticated; server uses session user). */
+export async function leaveEvent(postId) {
+  const token = getStoredSessionToken();
+  console.log(`[client/api] leaveEvent start postId=${postId}`);
+  const response = await fetch(`${API_BASE}/api/events/${postId}/leave`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  const data = await parseJsonSafe(response);
+  if (!response.ok) {
+    const err = new Error(data?.error || "Failed to leave event");
+    err.code = data?.code;
+    err.status = response.status;
+    throw err;
+  }
+  console.log(`[client/api] leaveEvent success postId=${postId}`);
+  return data || {};
 }
 
 // Create a new event
@@ -263,7 +292,9 @@ export async function signUpWithApi(payload) {
 
   const data = await parseJsonSafe(response);
   if (!response.ok) {
-    throw new Error(data?.error || getApiErrorMessage(response.status, "Failed to sign up"));
+    throw new Error(
+      data?.error || getApiErrorMessage(response.status, "Failed to sign up"),
+    );
   }
   console.log("[client/api] signup success");
   return data;
@@ -284,10 +315,15 @@ export async function loginWithApi({ email, password }) {
   if (data?.token) {
     localStorage.setItem(SESSION_TOKEN_KEY, data.token);
   }
-  console.log(`[client/api] login success userId=${data?.user?.id || "unknown"}`);
+  console.log(
+    `[client/api] login success userId=${data?.user?.id || "unknown"}`,
+  );
   return data;
 }
 
+/**
+ * @returns {Promise<{ user: object, joinedPostIds: string[] } | null>}
+ */
 export async function fetchCurrentUser(token = getStoredSessionToken()) {
   console.log(`[client/api] /me start tokenPresent=${token ? "yes" : "no"}`);
   if (!token) return null;
@@ -298,8 +334,15 @@ export async function fetchCurrentUser(token = getStoredSessionToken()) {
   if (!response.ok) {
     throw new Error(data?.error || "Session expired");
   }
-  console.log(`[client/api] /me success userId=${data?.user?.id || "unknown"}`);
-  return data?.user || null;
+  const user = data?.user || null;
+  if (!user) return null;
+  const joinedPostIds = Array.isArray(data?.joined_post_ids)
+    ? data.joined_post_ids.map((id) => String(id))
+    : [];
+  console.log(
+    `[client/api] /me success userId=${user?.id || "unknown"} joinedPosts=${joinedPostIds.length}`,
+  );
+  return { user, joinedPostIds };
 }
 
 export async function logoutWithApi() {

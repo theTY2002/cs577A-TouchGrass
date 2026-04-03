@@ -79,7 +79,7 @@ export function isPlanInMyPlans(event, joinedIds, currentUser = null) {
 
 /**
  * Build a full event record from the create/edit form.
- * @param {object} form — title, date, location, tags[], details, imageUrl
+ * @param {object} form — title, date, location, capacity, tags[], details, imageUrl
  * @param {string} contactEmail — saved user email (organizer context)
  * @param {{ id?: number|string, email?: string } | null} [currentUser]
  * @param {object|null} existing — when editing a local event, merge counts + id
@@ -91,6 +91,11 @@ export function buildEventFromForm(form, contactEmail, currentUser = null, exist
   const tags = form.tags?.length ? [...form.tags] : ['Event'];
   const localPart = (contactEmail || 'you').split('@')[0] || 'You';
   const initials = localPart.slice(0, 2).toUpperCase();
+  const capRaw = Number(form.capacity);
+  const capacity =
+    Number.isFinite(capRaw) && capRaw >= 1
+      ? Math.min(500, Math.floor(capRaw))
+      : (existing?.capacity ?? 10);
 
   const base = {
     title: form.title.trim(),
@@ -113,7 +118,7 @@ export function buildEventFromForm(form, contactEmail, currentUser = null, exist
     description: form.details?.trim() || '',
     location: form.location?.trim() || 'TBD',
     dateTime,
-    capacity: existing?.capacity ?? 20,
+    capacity,
     joinedCount: existing?.joinedCount ?? 0,
     tags,
     imageUrl: form.imageUrl?.trim() || FEED_HERO_IMAGE,

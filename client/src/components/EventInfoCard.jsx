@@ -2,11 +2,12 @@
  * Event Info Card: organizer, location, date, time, capacity, tags, Join/Leave.
  * Supporting sidebar styling — lighter elevation than main chat.
  */
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getProfileInitials } from '../tools/context/profileSettingsStorage';
 import { useProfileSettings } from '../tools/context/ProfileSettingsContext';
 import { useSession } from '../tools/cache/SessionContext';
+import { joinEvent as joinEventApi, leaveEvent as leaveEventRequest } from '../tools/api';
 
 function IconLocation({ className }) {
   return (
@@ -57,19 +58,59 @@ function MetaRow({ icon: Icon, label, children }) {
 export default function EventInfoCard({
   event,
   isOrganizer = false,
+  onJoinSuccess,
+  onLeaveSuccess,
 }) {
   const navigate = useNavigate();
-  const { signedIn, isJoinedToEvent, toggleEventMembership } = useSession();
+  const {
+    signedIn,
+    user,
+    isJoinedToEvent,
+    joinEvent: markJoinedLocal,
+    leaveEvent: markLeftLocal,
+  } = useSession();
   const joined = isJoinedToEvent(event.id);
+  const [joinNotice, setJoinNotice] = useState(null);
+  const [membershipBusy, setMembershipBusy] = useState(false);
 
-  const handleToggle = () => {
+  const handleToggle = async () => {
     if (!signedIn) {
       navigate('/login', {
         state: { from: `/event/${event.id}` },
       });
       return;
     }
-    toggleEventMembership(event.id);
+    if (joined) {
+      setJoinNotice(null);
+      setMembershipBusy(true);
+      try {
+        const data = await leaveEventRequest(event.id);
+        markLeftLocal(event.id);
+        onLeaveSuccess?.(data);
+      } catch (e) {
+        setJoinNotice(e?.message || 'Could not leave this event.');
+      } finally {
+        setMembershipBusy(false);
+      }
+      return;
+    }
+    if (user?.id == null) return;
+    setJoinNotice(null);
+    setMembershipBusy(true);
+    try {
+      const data = await joinEventApi(event.id, user.id);
+      markJoinedLocal(event.id);
+      onJoinSuccess?.(data);
+    } catch (e) {
+      const full = e?.status === 409 && e?.code === 'GROUP_FULL';
+      setJoinNotice(
+        full
+          ? 'This group is full.'
+          : e?.message || 'Could not join this event.',
+      );
+    } finally {
+      setMembershipBusy(false);
+    }
   };
 
   const dt = event.datetime || event.dateTime || '';
@@ -169,21 +210,41 @@ export default function EventInfoCard({
       )}
 
       {!isOrganizer && (
-        <button
-          type="button"
-          onClick={handleToggle}
-          className={`mt-7 w-full rounded-xl py-3.5 text-sm font-semibold transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-forest focus-visible:ring-offset-2 active:scale-[0.99] ${
-            joined
-              ? 'border border-stone-200/90 bg-white text-gray-800 shadow-sm hover:border-stone-300 hover:bg-stone-50 hover:shadow-md'
-              : 'bg-brand-forest text-white shadow-md shadow-brand-forest/25 hover:bg-brand-forest/90 hover:shadow-lg'
-          }`}
-          aria-label={
-            joined ? 'Leave event' : signedIn ? 'Join event' : 'Sign in to join this event'
-          }
-          aria-pressed={joined}
-        >
-          {joined ? 'Leave Event' : signedIn ? 'Join Event' : 'Sign in to join'}
-        </button>
+        <div className="mt-7 space-y-3">
+          {joinNotice && (
+            <div
+              className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs font-medium leading-snug text-amber-950"
+              role="alert"
+              aria-live="polite"
+            >
+              {joinNotice}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => void handleToggle()}
+            disabled={membershipBusy}
+            className={`w-full rounded-xl py-3.5 text-sm font-semibold transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-forest focus-visible:ring-offset-2 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70 ${
+              joined
+                ? 'border border-stone-200/90 bg-white text-gray-800 shadow-sm hover:border-stone-300 hover:bg-stone-50 hover:shadow-md'
+                : 'bg-brand-forest text-white shadow-md shadow-brand-forest/25 hover:bg-brand-forest/90 hover:shadow-lg'
+            }`}
+            aria-label={
+              joined ? 'Leave event' : signedIn ? 'Join event' : 'Sign in to join this event'
+            }
+            aria-pressed={joined}
+          >
+            {membershipBusy
+              ? joined
+                ? 'Leaving…'
+                : 'Joining…'
+              : joined
+                ? 'Leave Event'
+                : signedIn
+                  ? 'Join Event'
+                  : 'Sign in to join'}
+          </button>
+        </div>
       )}
     </aside>
   );

@@ -188,7 +188,34 @@ export default function EventDetails() {
       <div className="mx-auto max-w-6xl space-y-8 px-4 pb-14 pt-8 sm:space-y-10 sm:px-6 sm:pt-10 lg:px-8">
         <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12 lg:gap-10">
           <div className="animate-card-enter lg:col-span-4" style={{ animationDelay: '40ms' }}>
-            <EventInfoCard event={event} isOrganizer={isOrganizer} />
+            <EventInfoCard
+              event={event}
+              isOrganizer={isOrganizer}
+              onJoinSuccess={(data) => {
+                if (data?.current_members == null) return;
+                setEvent((prev) =>
+                  prev ? { ...prev, joinedCount: data.current_members } : prev,
+                );
+              }}
+              onLeaveSuccess={(data) => {
+                const uid = user?.id != null ? String(user.id) : null;
+                setEvent((prev) => {
+                  if (!prev) return prev;
+                  const members =
+                    uid && Array.isArray(prev.members)
+                      ? prev.members.filter((m) => String(m.id) !== uid)
+                      : prev.members;
+                  return {
+                    ...prev,
+                    joinedCount:
+                      data?.current_members != null
+                        ? data.current_members
+                        : prev.joinedCount,
+                    members,
+                  };
+                });
+              }}
+            />
           </div>
           <div className="animate-card-enter flex min-h-0 flex-col gap-5 lg:col-span-8 sm:gap-6" style={{ animationDelay: '70ms' }}>
             <AboutAboveChatCard description={event.description} />

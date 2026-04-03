@@ -223,6 +223,22 @@ export async function getUserProfile(userId) {
   return response.json();
 }
 
+// Update the authenticated user's name (users table) + profile fields (user_profiles table)
+export async function updateUserProfile({ name, bio, major, interests, avatar_url } = {}) {
+  const token = getStoredSessionToken();
+  const response = await fetch(`${API_BASE}/api/users/profile`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ name, bio, major, interests, avatar_url }),
+  });
+  const data = await parseJsonSafe(response);
+  if (!response.ok) throw new Error(data?.error || "Failed to update profile");
+  return data;
+}
+
 // Fetch a single event by ID
 export async function getEvent(postId) {
   const response = await fetch(`${API_BASE}/api/events/${postId}`);

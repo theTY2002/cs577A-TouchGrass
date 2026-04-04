@@ -6,11 +6,11 @@ import { Link } from 'react-router-dom';
 import { useSession } from '../tools/cache/SessionContext';
 import { setTouchGrassTitle } from '../tools/ui/documentTitle';
 import {
-  defaultProfileSettings,
   getProfileInitials,
   loadProfileSettings,
   saveProfileSettings,
 } from '../tools/context/profileSettingsStorage';
+import { getUserProfile, updateUserProfile } from '../tools/api';
 
 const panelClass =
   'rounded-md border border-stone-200/90 bg-white shadow-sm';
@@ -132,7 +132,12 @@ export default function Settings() {
   const saveHintTimerRef = useRef(null);
   const [settings, setSettings] = useState(() => loadProfileSettings(sessionEmail));
   const [saveHint, setSaveHint] = useState('');
+  const [nameError, setNameError] = useState('');
+  const [emailError, setEmailError] = useState('');
   const [avatarError, setAvatarError] = useState('');
+  // Track whether the initial server load has completed so we don't auto-save
+  // stale localStorage values before the DB data arrives.
+  const serverLoadedRef = useRef(false);
 
   const nameId = useId();
   const emailId = useId();
@@ -147,17 +152,69 @@ export default function Settings() {
     setTouchGrassTitle('Settings');
   }, []);
 
+  // When the signed-in user changes, reload localStorage baseline.
   useEffect(() => {
+    serverLoadedRef.current = false;
     setSettings(loadProfileSettings(sessionEmail));
   }, [sessionEmail]);
 
+  // Load profile fields from the server once when the user is available.
   useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    getUserProfile(user.id)
+      .then((profile) => {
+        if (cancelled) return;
+        // Merge server values over the localStorage baseline.
+        setSettings((prev) => ({
+          ...prev,
+          ...(profile.name != null ? { name: profile.name } : {}),
+          ...(profile.bio != null ? { bio: profile.bio } : {}),
+          ...(profile.major != null ? { major: profile.major } : {}),
+          ...(profile.avatar_url != null ? { avatarDataUrl: profile.avatar_url } : {}),
+        }));
+        serverLoadedRef.current = true;
+      })
+      .catch(() => {
+        // Server unavailable — keep localStorage values, still allow editing.
+        serverLoadedRef.current = true;
+      });
+    return () => { cancelled = true; };
+  }, [user?.id]);
+
+  useEffect(() => {
+    // Don't auto-save until after the server load attempt completes.
+    if (!serverLoadedRef.current) return;
+
     const saveId = setTimeout(() => {
-      saveProfileSettings(settings);
-      const em = typeof settings.email === 'string' ? settings.email.trim() : '';
-      if (em) updateSessionUser({ email: em });
       const nm = typeof settings.name === 'string' ? settings.name.trim() : '';
-      if (nm) updateSessionUser({ displayName: nm });
+      if (!nm) {
+        setNameError('Name is required');
+        return;
+      }
+      setNameError('');
+
+      const em = typeof settings.email === 'string' ? settings.email.trim() : '';
+      if (!em) {
+        setEmailError('Email is required');
+        return;
+      }
+      setEmailError('');
+
+      // Always persist app preferences (notifications, privacy) locally.
+      saveProfileSettings(settings);
+
+      // Sync display name and email into in-memory session.
+      updateSessionUser({ email: em });
+      updateSessionUser({ displayName: nm });
+
+      // Persist profile fields to the server (users.name + user_profiles).
+      updateUserProfile({
+        name: nm,
+        bio: settings.bio || null,
+        major: settings.major || null,
+      }).catch((err) => console.warn('[settings] profile sync failed:', err.message));
+
       if (saveHintTimerRef.current) clearTimeout(saveHintTimerRef.current);
       setSaveHint('Saved');
       saveHintTimerRef.current = setTimeout(() => {
@@ -299,6 +356,7 @@ export default function Settings() {
                     disabled={disabled}
                     autoComplete="name"
                   />
+                  {nameError ? <p className="mt-1.5 text-xs text-red-600">{nameError}</p> : null}
                 </div>
                 <div>
                   <Label htmlFor={emailId}>Email</Label>
@@ -310,6 +368,7 @@ export default function Settings() {
                     disabled={disabled}
                     autoComplete="email"
                   />
+                  {emailError ? <p className="mt-1.5 text-xs text-red-600">{emailError}</p> : null}
                 </div>
                 <div>
                   <Label htmlFor={bioId}>Bio</Label>

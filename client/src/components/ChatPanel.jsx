@@ -1,26 +1,12 @@
 /**
- * Chat panel: message list per event, input, localStorage persistence.
+ * Chat panel: message list per event, input, Supabase persistence + realtime.
  * When chatUnlocked is false, messages are obscured and input is disabled until the user joins.
+ * roomId is chat_rooms.r_id from the API (not the event/post id).
  */
 import { useState, useEffect, useRef } from 'react';
-
-const STORAGE_KEY = (eventId) => `chat_${eventId}`;
-
-function loadMessages(eventId) {
-  try {
-    const s = localStorage.getItem(STORAGE_KEY(eventId));
-    const arr = s ? JSON.parse(s) : [];
-    return Array.isArray(arr) ? arr : [];
-  } catch (_) {
-    return [];
-  }
-}
-
-function saveMessages(eventId, messages) {
-  try {
-    localStorage.setItem(STORAGE_KEY(eventId), JSON.stringify(messages));
-  } catch (_) {}
-}
+import { supabase } from '../tools/supabaseClient';
+import { useSession } from '../tools/cache/SessionContext';
+import { fetchUserDisplayNamesByIds } from '../tools/api';
 
 function formatTime(iso) {
   if (!iso) return '';
@@ -32,18 +18,172 @@ function formatTime(iso) {
   }
 }
 
-export default function ChatPanel({ eventId, inModal = false, chatUnlocked = true }) {
-  const [messages, setMessages] = useState(() => loadMessages(eventId));
+/** Map chat_messages.sender_user_id → label via Postgres users row (API, not Supabase RLS). */
+async function resolveLabelsForSenderIds(userIds) {
+  const unique = [
+    ...new Set(
+      userIds
+        .filter((id) => id != null && id !== '')
+        .map((id) => String(id)),
+    ),
+  ].filter((s) => s && s !== 'null' && s !== 'undefined');
+  if (unique.length === 0) return {};
+  return fetchUserDisplayNamesByIds(unique);
+}
+
+/**
+ * @param {object} props
+ * @param {string|null|undefined} props.roomId — chat_rooms.r_id (FK target for chat_messages.room_id)
+ */
+function newRealtimeTopicSuffix() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+}
+
+export default function ChatPanel({ roomId, inModal = false, chatUnlocked = true }) {
+  const { user } = useSession();
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  /** @type {import('react').MutableRefObject<Record<string, string>>} */
+  const senderNamesRef = useRef({});
+  const [senderNames, setSenderNames] = useState(() => ({}));
   const listRef = useRef(null);
 
   useEffect(() => {
-    setMessages(loadMessages(eventId));
-  }, [eventId]);
+    let active = true;
+
+    async function loadMessages() {
+      setLoading(true);
+      setError('');
+      setSenderNames({});
+      senderNamesRef.current = {};
+
+      const roomIdNum = roomId != null && roomId !== '' ? Number(roomId) : NaN;
+      if (!Number.isFinite(roomIdNum)) {
+        if (!active) return;
+        setLoading(false);
+        setMessages([]);
+        setError('Chat is not available for this event.');
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('chat_messages')
+          .select('m_id, room_id, sender_user_id, content, created_at')
+          .eq('room_id', roomIdNum)
+          .order('created_at', { ascending: true });
+
+        if (!active) return;
+
+        if (error) {
+          console.error('Could not load chat messages:', error);
+          setError('Could not load chat messages.');
+          setMessages([]);
+        } else {
+          const rows = data || [];
+          setMessages(
+            rows.map((m) => ({
+              id: m.m_id,
+              text: m.content,
+              sender:
+                m.sender_user_id != null && m.sender_user_id !== ''
+                  ? String(m.sender_user_id)
+                  : '',
+              createdAt: m.created_at,
+            }))
+          );
+
+          const senderIds = rows.map((m) => m.sender_user_id).filter((id) => id != null && id !== '');
+          const nameMap = await resolveLabelsForSenderIds(senderIds);
+          if (!active) return;
+          senderNamesRef.current = nameMap;
+          setSenderNames(nameMap);
+        }
+      } catch (e) {
+        console.error('Chat load failed:', e);
+        if (!active) return;
+        setError('Could not load chat messages.');
+        setMessages([]);
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    if (roomId) {
+      loadMessages();
+    } else {
+      setLoading(false);
+      setError('Chat is not available for this event.');
+      setMessages([]);
+      setSenderNames({});
+      senderNamesRef.current = {};
+    }
+
+    return () => {
+      active = false;
+    };
+  }, [roomId]);
 
   useEffect(() => {
-    saveMessages(eventId, messages);
-  }, [eventId, messages]);
+    if (!roomId) return;
+    const roomIdNum = Number(roomId);
+    if (!Number.isFinite(roomIdNum)) return;
+
+    /** New topic on every effect run: Supabase de-dupes by name; Strict Mode + two panels must never reuse a subscribed topic. */
+    const channelTopic = `chat-room-${roomIdNum}-${newRealtimeTopicSuffix()}`;
+    const channel = supabase
+      .channel(channelTopic)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `room_id=eq.${roomIdNum}`,
+        },
+        (payload) => {
+          const row = payload?.new;
+          if (!row) return;
+
+          setMessages((prev) => {
+            const alreadyExists = prev.some((m) => String(m.id) === String(row.m_id));
+            if (alreadyExists) return prev;
+
+            return [
+              ...prev,
+              {
+                id: row.m_id,
+                text: row.content,
+                sender:
+                  row.sender_user_id != null && row.sender_user_id !== ''
+                    ? String(row.sender_user_id)
+                    : '',
+                createdAt: row.created_at,
+              },
+            ];
+          });
+
+          if (row.sender_user_id == null || row.sender_user_id === '') return;
+          const sid = String(row.sender_user_id);
+          if (!senderNamesRef.current[sid]) {
+            void resolveLabelsForSenderIds([row.sender_user_id]).then((map) => {
+              senderNamesRef.current = { ...senderNamesRef.current, ...map };
+              setSenderNames((p) => ({ ...p, ...map }));
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [roomId]);
 
   useEffect(() => {
     if (listRef.current && chatUnlocked) {
@@ -51,19 +191,37 @@ export default function ChatPanel({ eventId, inModal = false, chatUnlocked = tru
     }
   }, [messages, chatUnlocked]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!chatUnlocked) return;
     const text = input.trim();
     if (!text) return;
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID?.() ?? Date.now(),
-        text,
-        sender: 'You',
-        createdAt: new Date().toISOString(),
-      },
-    ]);
+
+    const senderId = user?.id;
+    if (!senderId) {
+      setError('You must be signed in to send messages.');
+      return;
+    }
+
+    setError('');
+
+    const roomIdNum = roomId != null && roomId !== '' ? Number(roomId) : NaN;
+    if (!Number.isFinite(roomIdNum)) {
+      setError('Chat is not available for this event.');
+      return;
+    }
+
+    const { error: insertError } = await supabase.from('chat_messages').insert({
+      room_id: roomIdNum,
+      sender_user_id: senderId,
+      content: text,
+    });
+
+    if (insertError) {
+      console.error('Could not send message:', insertError);
+      setError('Could not send message.');
+      return;
+    }
+
     setInput('');
   };
 
@@ -76,9 +234,10 @@ export default function ChatPanel({ eventId, inModal = false, chatUnlocked = tru
   };
 
   const shellClass = inModal
-    ? 'flex h-full min-h-0 flex-col bg-bg-white'
+    ? /* flex-1 + min-h-0: modal parent must not rely on h-full (breaks when ancestor height is auto on mobile WebKit). */
+      'flex min-h-0 flex-1 flex-col bg-bg-white'
     : [
-        'flex min-h-[min(580px,64vh)] flex-col overflow-hidden rounded-2xl border border-stone-200/80',
+        'flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-stone-200/80',
         'bg-white/98 shadow-[0_12px_48px_-14px_rgba(0,0,0,0.14),0_4px_20px_-6px_rgba(116,136,115,0.12)]',
         'ring-1 ring-black/[0.04] backdrop-blur-sm transition-all duration-300',
         'hover:shadow-[0_16px_56px_-14px_rgba(0,0,0,0.16),0_6px_24px_-6px_rgba(116,136,115,0.14)]',
@@ -116,6 +275,7 @@ export default function ChatPanel({ eventId, inModal = false, chatUnlocked = tru
           </div>
         </header>
       )}
+
       <div className="relative min-h-0 flex-1">
         <div
           ref={listRef}
@@ -127,7 +287,15 @@ export default function ChatPanel({ eventId, inModal = false, chatUnlocked = tru
             }`}
             aria-hidden={!chatUnlocked}
           >
-            {messages.length === 0 ? (
+            {loading ? (
+              <div className="flex min-h-[14rem] items-center justify-center text-sm text-gray-500">
+                Loading chat...
+              </div>
+            ) : error ? (
+              <div className="flex min-h-[14rem] items-center justify-center text-sm text-red-600">
+                {error}
+              </div>
+            ) : messages.length === 0 ? (
               <div className="flex min-h-[14rem] flex-col items-center justify-center gap-3 px-4 text-center sm:min-h-[15rem]">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-forest/15 to-brand-terracotta/20 text-2xl shadow-inner">
                   <span aria-hidden>👋</span>
@@ -139,7 +307,7 @@ export default function ChatPanel({ eventId, inModal = false, chatUnlocked = tru
               </div>
             ) : (
               messages.map((m) => {
-                const mine = m.sender === 'You';
+                const mine = m.sender !== '' && String(m.sender) === String(user?.id);
                 return (
                   <div
                     key={m.id}
@@ -153,19 +321,21 @@ export default function ChatPanel({ eventId, inModal = false, chatUnlocked = tru
                       }`}
                     >
                       <div className={`flex items-baseline justify-between gap-3 ${mine ? 'flex-row-reverse' : ''}`}>
-                        <span
-                          className={`text-[11px] font-semibold ${mine ? 'text-white/90' : 'text-brand-forest'}`}
-                        >
-                          {m.sender}
+                        <span className={`text-[11px] font-semibold ${mine ? 'text-white/90' : 'text-brand-forest'}`}>
+                          {mine
+                            ? 'You'
+                            : !m.sender
+                              ? 'System'
+                              : senderNames[m.sender] || `User ${m.sender}`}
                         </span>
-                        <span
-                          className={`text-[10px] tabular-nums ${mine ? 'text-white/55' : 'text-gray-400'}`}
-                        >
+                        <span className={`text-[10px] tabular-nums ${mine ? 'text-white/55' : 'text-gray-400'}`}>
                           {formatTime(m.createdAt)}
                         </span>
                       </div>
                       <p
-                        className={`mt-1.5 text-[0.9375rem] leading-relaxed whitespace-pre-wrap break-words ${mine ? 'text-white' : 'text-gray-800'}`}
+                        className={`mt-1.5 text-[0.9375rem] leading-relaxed whitespace-pre-wrap break-words ${
+                          mine ? 'text-white' : 'text-gray-800'
+                        }`}
                       >
                         {m.text}
                       </p>
@@ -176,6 +346,7 @@ export default function ChatPanel({ eventId, inModal = false, chatUnlocked = tru
             )}
           </div>
         </div>
+
         {!chatUnlocked && (
           <div
             id="chat-locked-hint"
@@ -193,11 +364,18 @@ export default function ChatPanel({ eventId, inModal = false, chatUnlocked = tru
           </div>
         )}
       </div>
+
       <div
         className={`shrink-0 border-t border-stone-100/90 bg-white/95 p-3 shadow-[0_-4px_24px_-8px_rgba(0,0,0,0.06)] transition-opacity duration-300 sm:p-4 ${
           !chatUnlocked ? 'pointer-events-none opacity-55' : ''
         }`}
       >
+        {error && (
+          <p className="mb-2 text-xs text-red-600" role="alert">
+            {error}
+          </p>
+        )}
+
         <div className="flex gap-2 sm:gap-3">
           <input
             type="text"

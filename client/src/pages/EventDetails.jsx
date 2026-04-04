@@ -219,8 +219,8 @@ export default function EventDetails() {
           </div>
           <div className="animate-card-enter flex min-h-0 flex-col gap-5 lg:col-span-8 sm:gap-6" style={{ animationDelay: '70ms' }}>
             <AboutAboveChatCard description={event.description} />
-            <div className="hidden min-h-0 lg:block lg:min-h-[min(580px,64vh)]">
-              <ChatPanel eventId={event.id} chatUnlocked={chatUnlocked} />
+            <div className="hidden min-h-0 lg:flex lg:h-[min(580px,64vh)] lg:flex-col">
+              <ChatPanel roomId={event.chatRoomId} chatUnlocked={chatUnlocked} />
             </div>
           </div>
         </div>
@@ -264,10 +264,10 @@ export default function EventDetails() {
             aria-label="Close chat"
           />
           <div
-            className="relative flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-stone-200/70 bg-bg-white shadow-[0_24px_64px_-12px_rgba(0,0,0,0.25),0_12px_32px_-8px_rgba(116,136,115,0.12)] animate-fade-in ring-1 ring-black/[0.06]"
+            className="relative flex h-[85dvh] max-h-[85dvh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-stone-200/70 bg-bg-white shadow-[0_24px_64px_-12px_rgba(0,0,0,0.25),0_12px_32px_-8px_rgba(116,136,115,0.12)] animate-fade-in ring-1 ring-black/[0.06]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-stone-100/90 bg-gradient-to-b from-stone-50/90 to-stone-50/40 px-5 py-4">
+            <div className="flex shrink-0 items-center justify-between border-b border-stone-100/90 bg-gradient-to-b from-stone-50/90 to-stone-50/40 px-5 py-4">
               <div>
                 <h2 className="text-base font-semibold tracking-tight text-gray-900">Group chat</h2>
                 <p className="mt-0.5 text-xs text-gray-500">Plan together · this event</p>
@@ -283,12 +283,10 @@ export default function EventDetails() {
                 </svg>
               </button>
             </div>
-            <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain p-4">
+            <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden overscroll-contain p-4">
               <AboutAboveChatCard description={event.description} className="shrink-0" />
-              <div className="flex min-h-[min(42vh,320px)] flex-1 flex-col overflow-hidden rounded-2xl border border-stone-200/70 bg-bg-white shadow-md ring-1 ring-black/[0.04]">
-                <div className="flex h-full min-h-0 flex-1 flex-col">
-                  <ChatPanel eventId={event.id} inModal chatUnlocked={chatUnlocked} />
-                </div>
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-stone-200/70 bg-bg-white shadow-md ring-1 ring-black/[0.04]">
+                <ChatPanel roomId={event.chatRoomId} inModal chatUnlocked={chatUnlocked} />
               </div>
             </div>
           </div>

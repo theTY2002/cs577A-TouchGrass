@@ -41,6 +41,56 @@ router.patch('/profile', requireAuth, async (req, res) => {
     }
 });
 
+/**
+ * POST body: { ids: (string|number)[] } — values are chat_messages.sender_user_id / users.u_id.
+ * Returns { [u_id: string]: label } using users.name, then email local part (no user_profiles.display_name — column may be absent).
+ * Must be registered before GET /:user_id so "display-names" is not parsed as an id.
+ */
+router.post('/display-names', async (req, res) => {
+    const raw = req.body?.ids;
+    if (!Array.isArray(raw) || raw.length === 0) {
+        return res.json({});
+    }
+
+    const numericIds = [
+        ...new Set(
+            raw
+                .map((id) => parseInt(String(id), 10))
+                .filter((n) => !Number.isNaN(n)),
+        ),
+    ];
+
+    if (numericIds.length === 0) {
+        return res.json({});
+    }
+
+    try {
+        const result = await pool.query(
+            `
+            SELECT
+                u.u_id,
+                COALESCE(
+                    NULLIF(TRIM(COALESCE(u.name, '')), ''),
+                    NULLIF(TRIM(SPLIT_PART(COALESCE(u.email, ''), '@', 1)), '')
+                ) AS display_name
+            FROM users u
+            WHERE u.u_id = ANY($1::int[])
+            `,
+            [numericIds],
+        );
+
+        const map = {};
+        for (const row of result.rows) {
+            const id = String(row.u_id);
+            map[id] = row.display_name?.trim() || `User ${id}`;
+        }
+        res.json(map);
+    } catch (error) {
+        console.error('Error batch-fetching display names:', error);
+        res.status(500).json({ error: 'Failed to resolve display names' });
+    }
+});
+
 // GET: Retrieve user information
 router.get('/:user_id', async (req, res) => {
     const userId = parseInt(req.params.user_id);

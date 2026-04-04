@@ -328,32 +328,62 @@ export default function EventForm() {
 
   if (createSuccessEmail) {
     return (
-      <div className="relative min-h-full bg-gradient-to-b from-[#f4f1eb] via-[#eef3ee] to-[#e6ebe4] px-4 py-14 sm:py-20 animate-fade-in">
-        <CloseFormButton onClick={() => navigate('/feed')} />
-        <div className="mx-auto w-[min(90vw,720px)]">
-          <div
-            className="rounded-[1.75rem] border border-white/70 bg-white/90 px-8 py-12 text-center shadow-[0_8px_40px_-12px_rgba(116,136,115,0.28)] ring-1 ring-brand-forest/10 backdrop-blur-sm sm:px-10 sm:py-14"
-            role="status"
-            aria-live="polite"
-          >
-            <div
-              className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-forest/20 to-brand-terracotta/25 text-2xl"
-              aria-hidden
-            >
-              ✓
+      <div className="relative min-h-screen animate-fade-in">
+        <div
+          className="absolute inset-0 bg-gradient-to-b from-[#ebe6de] via-[#f3efe8] to-[#e8ebe5]"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_85%_55%_at_50%_-8%,rgba(116,136,115,0.14),transparent_58%),radial-gradient(ellipse_70%_45%_at_100%_85%,rgba(209,169,128,0.1),transparent_55%),radial-gradient(ellipse_55%_40%_at_0%_100%,rgba(116,136,115,0.06),transparent_50%)]"
+          aria-hidden
+        />
+        <main
+          className="relative z-10 flex min-h-screen flex-col items-center justify-center px-5 py-10 sm:px-6 sm:py-12"
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+          aria-label="Event created. Redirecting to feed."
+        >
+          <div className="w-full max-w-[20rem] text-center sm:max-w-[22rem]">
+            <div className="mx-auto mb-5 flex h-[3.25rem] w-[3.25rem] items-center justify-center rounded-full bg-gradient-to-br from-brand-forest to-[#5f7360] text-white shadow-[0_8px_24px_-6px_rgba(116,136,115,0.55),0_2px_8px_rgba(0,0,0,0.06)] ring-[3px] ring-white/80">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.25"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-[1.35rem] w-[1.35rem] translate-y-[1px]"
+                aria-hidden
+              >
+                <path d="M20 6L9 17l-5-5" />
+              </svg>
             </div>
-            <p className="font-display text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
+            <h1 className="font-display text-[1.65rem] font-bold leading-tight tracking-tight text-gray-900 sm:text-[1.875rem]">
               Event created
+            </h1>
+            <p className="mt-2.5 text-[0.9375rem] leading-relaxed text-gray-600 sm:text-base">
+              Your event is ready. Redirecting you to the feed…
             </p>
-            <p className="mt-3 text-sm leading-relaxed text-gray-600 sm:text-base">
-              Point of contact is{' '}
-              <span className="font-medium text-brand-forest">{createSuccessEmail}</span>
-            </p>
-            <p className="mt-6 text-xs font-medium uppercase tracking-wider text-gray-400">
-              Taking you to the feed…
-            </p>
+            <div className="mx-auto mt-7 flex max-w-[17rem] items-center gap-3 sm:max-w-none sm:gap-3.5">
+              <div
+                className="event-created-spinner size-[1.125rem] shrink-0 rounded-full border-2 border-brand-forest/20 border-t-brand-forest"
+                aria-hidden
+              />
+              <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-brand-forest/[0.12] shadow-inner shadow-black/[0.03]">
+                <div className="h-full w-full rounded-full bg-gradient-to-r from-brand-forest to-brand-forest/75 animate-event-created-bar" />
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate('/feed')}
+              className="mt-8 w-full rounded-xl border border-brand-forest/25 bg-white/60 px-4 py-2.5 text-sm font-semibold text-brand-forest shadow-sm shadow-brand-forest/5 backdrop-blur-sm transition-all duration-200 hover:border-brand-forest/40 hover:bg-white/90 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-forest focus-visible:ring-offset-2 focus-visible:ring-offset-transparent sm:w-auto sm:min-w-[11rem]"
+            >
+              Go to feed now
+            </button>
           </div>
-        </div>
+        </main>
       </div>
     );
   }

@@ -92,6 +92,10 @@ export function mapPostToEvent(row) {
 
   return {
     id: String(row.post_id),
+    chatRoomId:
+      row.chat_room_id != null && row.chat_room_id !== ""
+        ? String(row.chat_room_id)
+        : null,
     ownerUserId: row.owner_user_id != null ? String(row.owner_user_id) : null,
     ownerEmail: row.owner_email || "",
     title: row.title,
@@ -266,6 +270,33 @@ export async function updateUserProfile({ name, bio, major, interests, avatar_ur
   const data = await parseJsonSafe(response);
   if (!response.ok) throw new Error(data?.error || "Failed to update profile");
   return data;
+}
+
+/**
+ * Resolve chat sender ids: each id is users.u_id (chat_messages.sender_user_id).
+ * Server reads users.name, then email local part.
+ * @param {(string|number)[]} ids
+ * @returns {Promise<Record<string, string>>}
+ */
+export async function fetchUserDisplayNamesByIds(ids) {
+  const unique = [...new Set(ids.map((id) => String(id)))].filter(
+    (s) => s && s !== "null" && s !== "undefined",
+  );
+  if (unique.length === 0) return {};
+
+  const response = await fetch(`${API_BASE}/api/users/display-names`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids: unique }),
+  });
+
+  if (!response.ok) {
+    console.error("[client/api] fetchUserDisplayNamesByIds failed", response.status);
+    return {};
+  }
+
+  const data = await response.json();
+  return data && typeof data === "object" ? data : {};
 }
 
 // Fetch a single event by ID

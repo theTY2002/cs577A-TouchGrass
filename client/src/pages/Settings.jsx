@@ -10,7 +10,7 @@ import {
   loadProfileSettings,
   saveProfileSettings,
 } from '../tools/context/profileSettingsStorage';
-import { getUserProfile, updateUserProfile } from '../tools/api';
+import { getUserProfile, updateUserProfile, isPayloadTooLargeError } from '../tools/api';
 
 const panelClass =
   'rounded-md border border-stone-200/90 bg-white shadow-sm';
@@ -135,6 +135,7 @@ export default function Settings() {
   const [nameError, setNameError] = useState('');
   const [emailError, setEmailError] = useState('');
   const [avatarError, setAvatarError] = useState('');
+  const [profileImageTooLarge, setProfileImageTooLarge] = useState(false);
   // Track whether the initial server load has completed so we don't auto-save
   // stale localStorage values before the DB data arrives.
   const serverLoadedRef = useRef(false);
@@ -208,12 +209,23 @@ export default function Settings() {
       updateSessionUser({ email: em });
       updateSessionUser({ displayName: nm });
 
-      // Persist profile fields to the server (users.name + user_profiles).
+      // Persist profile fields to the server (users.name + user_profiles), including avatar as data URL in avatar_url.
       updateUserProfile({
         name: nm,
         bio: settings.bio || null,
         major: settings.major || null,
-      }).catch((err) => console.warn('[settings] profile sync failed:', err.message));
+        avatar_url: settings.avatarDataUrl ?? null,
+      })
+        .then(() => {
+          setProfileImageTooLarge(false);
+        })
+        .catch((err) => {
+          if (isPayloadTooLargeError(err)) {
+            setProfileImageTooLarge(true);
+            return;
+          }
+          console.warn('[settings] profile sync failed:', err.message);
+        });
 
       if (saveHintTimerRef.current) clearTimeout(saveHintTimerRef.current);
       setSaveHint('Saved');
@@ -247,6 +259,7 @@ export default function Settings() {
       return;
     }
     setAvatarError('');
+    setProfileImageTooLarge(false);
     try {
       const dataUrl = await fileToResizedDataUrl(file);
       patch({ avatarDataUrl: dataUrl });
@@ -257,6 +270,7 @@ export default function Settings() {
 
   const removePhoto = () => {
     setAvatarError('');
+    setProfileImageTooLarge(false);
     patch({ avatarDataUrl: null });
   };
 
@@ -292,7 +306,14 @@ export default function Settings() {
             description="How you appear to others on TouchGrass."
           >
             <div>
-              <SubsectionTitle>Photo</SubsectionTitle>
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+                <SubsectionTitle>Photo</SubsectionTitle>
+                {profileImageTooLarge ? (
+                  <span className="text-sm font-semibold text-red-600" role="alert">
+                    image too large
+                  </span>
+                ) : null}
+              </div>
               <p className="mt-1 text-sm text-stone-500">A square image works best. Shown on your profile and RSVPs.</p>
               <div className="mt-4 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
                 <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-full border border-stone-200 bg-stone-100 shadow-sm">

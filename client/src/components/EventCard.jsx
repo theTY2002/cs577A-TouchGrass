@@ -38,12 +38,17 @@ export default function EventCard({
 
   const tags = Array.isArray(tagsRaw) ? tagsRaw : [];
 
-  const rawDateTime = dateTime || event.datetime;
-  let formattedDate = '';
+  /** ISO instant from posts.datetime_start (see feed / mapPostToEvent). */
+  const rawDateTime =
+    event.datetime_start ?? dateTime ?? event.datetime ?? '';
+  let formattedDateTime = '';
+  let timeDateTimeAttr = '';
   if (rawDateTime) {
     const d = new Date(rawDateTime);
     if (!Number.isNaN(d.getTime())) {
-      formattedDate = d.toLocaleDateString('en-US', {
+      timeDateTimeAttr = d.toISOString();
+      // toLocaleDateString ignores hour/minute; use toLocaleString for start time.
+      formattedDateTime = d.toLocaleString('en-US', {
         weekday: 'short',
         month: 'short',
         day: 'numeric',
@@ -168,11 +173,11 @@ export default function EventCard({
             >
               {title}
             </h2>
-            {(formattedDate || location) && (
+            {(formattedDateTime || location) && (
               <div className="mt-1.5 flex flex-col gap-0.5 text-xs text-white/90">
-                {formattedDate && (
-                  <time dateTime={rawDateTime || undefined} className="font-medium text-white/95">
-                    {formattedDate}
+                {formattedDateTime && (
+                  <time dateTime={timeDateTimeAttr || undefined} className="font-medium text-white/95">
+                    {formattedDateTime}
                   </time>
                 )}
                 {location && (
@@ -204,12 +209,12 @@ export default function EventCard({
             </svg>
             <span className="truncate">{location}</span>
           </div>
-          {formattedDate && (
+          {formattedDateTime && (
             <div className="flex items-center gap-2 text-sm text-gray-500">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-gray-400 flex-shrink-0" aria-hidden>
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clipRule="evenodd" />
               </svg>
-              <time dateTime={rawDateTime || undefined}>{formattedDate}</time>
+              <time dateTime={timeDateTimeAttr || undefined}>{formattedDateTime}</time>
             </div>
           )}
         </div>

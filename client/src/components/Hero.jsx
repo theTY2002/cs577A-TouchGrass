@@ -2,7 +2,6 @@
  * Full-bleed photo hero with brand-tinted overlay, large headline, subheading.
  * Edit: image URL, overlay gradient in :root --hero-overlay
  */
-import { TouchGrassHeroWordmark } from './TouchGrassIcon';
 
 /** Same asset as feed hero; used as default event cover when none is uploaded. */
 export const FEED_HERO_IMAGE = '/bg.png';
@@ -38,7 +37,6 @@ export default function Hero() {
       {/* Content */}
       <div className="relative z-[1] h-full max-w-7xl mx-auto px-6 sm:px-8 flex flex-col justify-center">
         <div className="max-w-2xl">
-          <TouchGrassHeroWordmark />
           <h1
             id="hero-heading"
             className="text-hero font-extrabold text-white tracking-tight text-shadow-hero animate-[fadeSlide_0.6s_ease-out]"

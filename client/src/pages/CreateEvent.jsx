@@ -15,7 +15,7 @@ import {
 } from '../tools/cache/localEventsStorage';
 import LocationAutocomplete from '../components/LocationAutocomplete';
 import { FEED_HERO_IMAGE } from '../components/Hero';
-import { createEvent } from '../tools/api';
+import { createEvent, isPayloadTooLargeError } from '../tools/api';
 
 const ALL_TAGS = ['Study', 'Coffee', 'Hiking', 'Food', 'Gaming', 'Music', 'Party', 'Sports', 'Event'];
 
@@ -24,7 +24,25 @@ const inputClass =
 
 const labelClass = 'block text-xs font-bold uppercase tracking-[0.12em] text-brand-forest/90 mb-2';
 
+const fieldLabelTextClass = 'text-xs font-bold uppercase tracking-[0.12em] text-brand-forest/90';
+
 const sectionTitleClass = 'text-sm font-semibold text-gray-800 tracking-tight';
+
+function isNonEmptyString(v) {
+  return typeof v === 'string' && v.trim().length > 0;
+}
+
+/** Create flow only: which required fields are still empty (cover image optional). */
+function getCreateFormMissing(form) {
+  const missing = new Set();
+  if (!isNonEmptyString(form.title)) missing.add('title');
+  if (!isNonEmptyString(form.date)) missing.add('date');
+  if (!form.time || !String(form.time).trim()) missing.add('time');
+  if (!isNonEmptyString(form.location)) missing.add('location');
+  if (!isNonEmptyString(form.details)) missing.add('details');
+  if (!form.tags || form.tags.length < 1) missing.add('tags');
+  return missing;
+}
 
 function IconCalendar({ className = 'h-5 w-5' }) {
   return (
@@ -92,6 +110,44 @@ function IconSparkles({ className = 'h-5 w-5' }) {
 
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png']);
 
+/** Resize to max edge, return JPEG data URL (smaller request body for API + DB). */
+function fileToResizedDataUrl(file, maxPx = 960) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { naturalWidth: w, naturalHeight: h } = img;
+      if (!w || !h) {
+        reject(new Error('Invalid image'));
+        return;
+      }
+      const scale = Math.min(1, maxPx / Math.max(w, h));
+      const cw = Math.round(w * scale);
+      const ch = Math.round(h * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = cw;
+      canvas.height = ch;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('No canvas'));
+        return;
+      }
+      ctx.drawImage(img, 0, 0, cw, ch);
+      try {
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Failed to load image'));
+    };
+    img.src = url;
+  });
+}
+
 function isAllowedImageFile(file) {
   if (ALLOWED_IMAGE_TYPES.has(file.type)) return true;
   if (file.type) return false;
@@ -99,12 +155,34 @@ function isAllowedImageFile(file) {
   return ext === 'jpg' || ext === 'jpeg' || ext === 'png';
 }
 
-function todayISODateLocal() {
-  const d = new Date();
+/** Local calendar date + time (no Z) → UTC instant for API / timestamptz. */
+function combineLocalDateTimeToISO(dateStr, timeStr) {
+  if (!dateStr || !String(dateStr).trim()) return null;
+  const rawT = (timeStr && String(timeStr).trim()) || '12:00';
+  const withSec = rawT.length === 5 ? `${rawT}:00` : rawT;
+  const d = new Date(`${dateStr.trim()}T${withSec}`);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
+function isEventStartInPast(dateStr, timeStr) {
+  const iso = combineLocalDateTimeToISO(dateStr, timeStr);
+  if (!iso) return false;
+  return new Date(iso).getTime() < Date.now();
+}
+
+function todayISODateLocal(d = new Date()) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
+}
+
+/** `HH:mm` in local time, for `<input type="time" min="…">`. */
+function localTimeHHMM(d = new Date()) {
+  const h = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${h}:${min}`;
 }
 
 export default function EventForm() {
@@ -116,12 +194,16 @@ export default function EventForm() {
   const isEdit = id && id !== 'new';
   const imageInputRef = useRef(null);
   const [imageError, setImageError] = useState('');
+  const [imageTooLargeServer, setImageTooLargeServer] = useState(false);
+  const [createEventError, setCreateEventError] = useState('');
   const [imageDropActive, setImageDropActive] = useState(false);
   const [createSuccessEmail, setCreateSuccessEmail] = useState(null);
   const [dateInPastError, setDateInPastError] = useState(false);
+  const [createSubmitAttempted, setCreateSubmitAttempted] = useState(false);
   const [form, setForm] = useState({
     title: '',
     date: '',
+    time: '12:00',
     location: '',
     capacity: 10,
     tags: [],
@@ -136,10 +218,20 @@ export default function EventForm() {
       if (found) {
         const dt = found.datetime || found.dateTime || '';
         const dateStr = dt ? dt.slice(0, 10) : '';
+        let timeStr = '12:00';
+        if (dt) {
+          const parsed = new Date(dt);
+          if (!Number.isNaN(parsed.getTime())) {
+            const h = String(parsed.getHours()).padStart(2, '0');
+            const m = String(parsed.getMinutes()).padStart(2, '0');
+            timeStr = `${h}:${m}`;
+          }
+        }
         const cap = found.capacity ?? found.max_members ?? found.maxMembers;
         setForm({
           title: found.title || '',
           date: dateStr,
+          time: timeStr,
           location: found.location || '',
           capacity:
             typeof cap === 'number' && Number.isFinite(cap) && cap >= 1
@@ -154,6 +246,7 @@ export default function EventForm() {
       setForm({
         title: '',
         date: '',
+        time: '12:00',
         location: '',
         capacity: 10,
         tags: [],
@@ -176,41 +269,61 @@ export default function EventForm() {
     setCreateSuccessEmail(null);
   }, [id]);
 
+  useEffect(() => {
+    setCreateSubmitAttempted(false);
+  }, [id, isEdit]);
+
+  const missingCreateFields = !isEdit ? getCreateFormMissing(form) : new Set();
+  const showCreateRequired = !isEdit && createSubmitAttempted;
+  const todayLocal = todayISODateLocal();
+  const minTimeToday = !isEdit && form.date === todayLocal ? localTimeHHMM() : undefined;
+
   const handleChange = (field, value) => {
-    if (field === 'date' && !isEdit) {
-      const today = todayISODateLocal();
-      setDateInPastError(Boolean(value && value < today));
-    }
-    setForm((prev) => ({ ...prev, [field]: value }));
+    setForm((prev) => {
+      if (!isEdit && field === 'date' && value && value < todayISODateLocal()) {
+        return prev;
+      }
+
+      let next = { ...prev, [field]: value };
+
+      if (!isEdit && (field === 'date' || field === 'time')) {
+        const today = todayISODateLocal();
+        if (next.date === today && isEventStartInPast(next.date, next.time)) {
+          next = { ...next, time: localTimeHHMM() };
+        }
+        setDateInPastError(isEventStartInPast(next.date, next.time));
+      }
+
+      return next;
+    });
   };
 
-  const loadImageFile = (file, resetInput) => {
+  const loadImageFile = async (file, resetInput) => {
     setImageError('');
+    setImageTooLargeServer(false);
+    setCreateEventError('');
     if (!file) return;
     if (!isAllowedImageFile(file)) {
       setImageError('Please choose a JPG or PNG image.');
       resetInput?.();
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      setForm((prev) => ({
-        ...prev,
-        imageUrl: typeof reader.result === 'string' ? reader.result : '',
-      }));
-    };
-    reader.onerror = () => {
-      setImageError('Could not read that file. Try another image.');
+    try {
+      const dataUrl = await fileToResizedDataUrl(file, 960);
+      setForm((prev) => ({ ...prev, imageUrl: dataUrl }));
+    } catch {
+      setImageError('Could not use that image. Try another file.');
       resetInput?.();
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
-  const handleImageFile = (e) => {
+  const handleImageFile = async (e) => {
     const file = e.target.files?.[0];
-    loadImageFile(file, () => {
-      e.target.value = '';
+    const input = e.target;
+    await loadImageFile(file, () => {
+      input.value = '';
     });
+    input.value = '';
   };
 
   const handleImageDragOver = (e) => {
@@ -232,16 +345,18 @@ export default function EventForm() {
     }
   };
 
-  const handleImageDrop = (e) => {
+  const handleImageDrop = async (e) => {
     e.preventDefault();
     e.stopPropagation();
     setImageDropActive(false);
     const file = e.dataTransfer.files?.[0];
-    loadImageFile(file, undefined);
+    await loadImageFile(file, undefined);
   };
 
   const clearEventImage = () => {
     setImageError('');
+    setImageTooLargeServer(false);
+    setCreateEventError('');
     setForm((prev) => ({ ...prev, imageUrl: '' }));
     if (imageInputRef.current) imageInputRef.current.value = '';
   };
@@ -274,7 +389,7 @@ export default function EventForm() {
   //     navigate(`/event/${id}`);
   //     return;
   //   }
-  //   if (dateInPastError || (form.date && form.date < todayISODateLocal())) {
+  //   if (dateInPastError || (form.date && isEventStartInPast(form.date, form.time))) {
   //     return;
   //   }
   //   const newEvent = buildEventFromForm(form, contactEmail);
@@ -292,28 +407,51 @@ export default function EventForm() {
       navigate(`/event/${id}`);
       return;
     }
-    if (dateInPastError || (form.date && form.date < todayISODateLocal())) {
+    const missing = getCreateFormMissing(form);
+    if (missing.size > 0) {
+      setCreateSubmitAttempted(true);
+      return;
+    }
+
+    if (dateInPastError || (form.date && isEventStartInPast(form.date, form.time))) {
       return;
     }
 
     try {
+      setCreateEventError('');
       const cap = Number(form.capacity);
       const capacity =
         Number.isFinite(cap) && cap >= 1 ? Math.min(500, Math.floor(cap)) : 10;
 
+      const imageTrimmed = typeof form.imageUrl === 'string' ? form.imageUrl.trim() : '';
       const eventPayload = {
         owner_user_id: user?.id ?? 1,
         title: form.title,
         tags: form.tags.join(','),
-        datetime_start: form.date ? new Date(form.date).toISOString() : null,
+        datetime_start: combineLocalDateTimeToISO(form.date, form.time),
         location_text: form.location,
         plan_text: form.details,
         capacity,
+        image_url: imageTrimmed || null,
+        imageUrl: imageTrimmed || null,
       };
 
-      await createEvent(eventPayload);
+      const result = await createEvent(eventPayload);
+      setImageTooLargeServer(false);
+      if (imageTrimmed && result?.image_saved === false) {
+        setCreateEventError(
+          'Cover image was not saved. From the server folder run: npm run db:ensure-image-column',
+        );
+        return;
+      }
       setCreateSuccessEmail(contactEmail);
     } catch (error) {
+      if (isPayloadTooLargeError(error)) {
+        setImageTooLargeServer(true);
+        return;
+      }
+      const msg = error instanceof Error ? error.message : 'Failed to create event';
+      setCreateEventError(msg);
       console.error('Database failed to create event:', error);
     }
   };
@@ -428,9 +566,16 @@ export default function EventForm() {
               </div>
 
               <div>
-                <label htmlFor="event-title" className={labelClass}>
-                  Title
-                </label>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <label htmlFor="event-title" className={`${fieldLabelTextClass} mb-0`}>
+                    Title
+                  </label>
+                  {showCreateRequired && missingCreateFields.has('title') ? (
+                    <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-red-600">
+                      Required
+                    </span>
+                  ) : null}
+                </div>
                 <div className="relative">
                   <span
                     className="pointer-events-none absolute left-3.5 top-1/2 z-10 -translate-y-1/2 text-brand-forest/45"
@@ -443,55 +588,120 @@ export default function EventForm() {
                     type="text"
                     value={form.title}
                     onChange={(e) => handleChange('title', e.target.value)}
-                    className={`${inputClass} pl-11`}
+                    aria-invalid={showCreateRequired && missingCreateFields.has('title')}
+                    className={`${inputClass} pl-11 ${
+                      showCreateRequired && missingCreateFields.has('title')
+                        ? 'border-red-400 ring-1 ring-red-200/60'
+                        : ''
+                    }`}
                     placeholder="e.g. Sunset study circle at Leavey"
-                    required
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="event-date" className={labelClass}>
-                  When
-                </label>
-                <div className="relative">
-                  <span
-                    className="pointer-events-none absolute left-3.5 top-1/2 z-10 -translate-y-1/2 text-brand-forest/45"
-                    aria-hidden
-                  >
-                    <IconCalendar className="h-5 w-5" />
-                  </span>
-                  <input
-                    id="event-date"
-                    type="date"
-                    value={form.date}
-                    onChange={(e) => handleChange('date', e.target.value)}
-                    aria-invalid={!isEdit && dateInPastError}
-                    className={`${inputClass} pl-11 ${
-                      !isEdit && dateInPastError ? 'border-red-400 ring-red-200/50' : ''
-                    }`}
-                  />
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <p id="event-when-label" className={`${fieldLabelTextClass} mb-0`}>
+                    When
+                  </p>
+                  {showCreateRequired &&
+                  (missingCreateFields.has('date') || missingCreateFields.has('time')) ? (
+                    <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-red-600">
+                      Required
+                    </span>
+                  ) : null}
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+                  <div className="relative min-w-0 flex-1">
+                    <label htmlFor="event-date" className="sr-only">
+                      Date
+                    </label>
+                    <span
+                      className="pointer-events-none absolute left-3.5 top-1/2 z-10 -translate-y-1/2 text-brand-forest/45"
+                      aria-hidden
+                    >
+                      <IconCalendar className="h-5 w-5" />
+                    </span>
+                    <input
+                      id="event-date"
+                      type="date"
+                      value={form.date}
+                      min={!isEdit ? todayLocal : undefined}
+                      onChange={(e) => handleChange('date', e.target.value)}
+                      aria-labelledby="event-when-label"
+                      aria-invalid={
+                        (!isEdit && dateInPastError) ||
+                        (showCreateRequired && missingCreateFields.has('date'))
+                      }
+                      className={`${inputClass} pl-11 ${
+                        !isEdit && dateInPastError
+                          ? 'border-red-400 ring-red-200/50'
+                          : showCreateRequired && missingCreateFields.has('date')
+                            ? 'border-red-400 ring-1 ring-red-200/60'
+                            : ''
+                      }`}
+                    />
+                  </div>
+                  <div className="relative min-w-0 flex-1 sm:max-w-[11rem]">
+                    <label htmlFor="event-time" className="sr-only">
+                      Start time
+                    </label>
+                    <input
+                      id="event-time"
+                      type="time"
+                      value={form.time}
+                      min={minTimeToday}
+                      onChange={(e) => handleChange('time', e.target.value)}
+                      aria-labelledby="event-when-label"
+                      aria-invalid={
+                        (!isEdit && dateInPastError) ||
+                        (showCreateRequired && missingCreateFields.has('time'))
+                      }
+                      className={`${inputClass} ${
+                        !isEdit && dateInPastError
+                          ? 'border-red-400 ring-red-200/50'
+                          : showCreateRequired && missingCreateFields.has('time')
+                            ? 'border-red-400 ring-1 ring-red-200/60'
+                            : ''
+                      }`}
+                    />
+                  </div>
                 </div>
                 {!isEdit && dateInPastError ? (
                   <p className="mt-2 text-sm font-medium text-red-600" role="alert">
-                    Please select a date in the future
+                    Please choose a start date and time in the future
                   </p>
                 ) : (
-                  <p className="mt-2 text-xs text-gray-500">Pick the day your meetup happens.</p>
+                  <p className="mt-2 text-xs text-gray-500">
+                    Choose today or a later day; if it&apos;s today, the time must be no earlier than now.
+                    Stored in your timezone on the server.
+                  </p>
                 )}
               </div>
 
               <div>
-                <label htmlFor="event-location" className={labelClass}>
-                  Where
-                </label>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <label htmlFor="event-location" className={`${fieldLabelTextClass} mb-0`}>
+                    Where
+                  </label>
+                  {showCreateRequired && missingCreateFields.has('location') ? (
+                    <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-red-600">
+                      Required
+                    </span>
+                  ) : null}
+                </div>
                 <LocationAutocomplete
                   id="event-location"
                   value={form.location}
                   onChange={(v) => handleChange('location', v)}
                   leadingIcon={<IconMapPin className="h-5 w-5" />}
                   placeholder="Search campus, café, park, or address…"
-                  className={inputClass}
+                  className={`${inputClass}${
+                    showCreateRequired && missingCreateFields.has('location')
+                      ? ' border-red-400 ring-1 ring-red-200/60'
+                      : ''
+                  }`}
+                  invalid={showCreateRequired && missingCreateFields.has('location')}
                 />
                 <p className="mt-2 text-xs text-gray-500">
                   We&apos;ll suggest places near you when location is on.
@@ -531,9 +741,20 @@ export default function EventForm() {
                   Vibe & tags
                 </h2>
                 <span className="h-px flex-1 bg-gradient-to-r from-brand-terracotta/35 to-transparent" aria-hidden />
+                {showCreateRequired && missingCreateFields.has('tags') ? (
+                  <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-red-600">
+                    Required
+                  </span>
+                ) : null}
               </div>
               <p className="text-sm text-gray-500">Tap one or more — helps friends discover your event.</p>
-              <div className="rounded-2xl border border-brand-forest/10 bg-gradient-to-br from-brand-forest/[0.06] to-brand-terracotta/[0.06] p-4 sm:p-5">
+              <div
+                className={`rounded-2xl border bg-gradient-to-br from-brand-forest/[0.06] to-brand-terracotta/[0.06] p-4 sm:p-5 ${
+                  showCreateRequired && missingCreateFields.has('tags')
+                    ? 'border-red-400 ring-1 ring-red-200/60'
+                    : 'border-brand-forest/10'
+                }`}
+              >
                 <div className="flex flex-wrap gap-2.5">
                   {ALL_TAGS.map((tag) => {
                     const on = form.tags.includes(tag);
@@ -565,15 +786,27 @@ export default function EventForm() {
                 <span className="h-px flex-1 bg-gradient-to-r from-brand-forest/25 to-transparent" aria-hidden />
               </div>
               <div>
-                <label htmlFor="event-details" className={labelClass}>
-                  Description
-                </label>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <label htmlFor="event-details" className={`${fieldLabelTextClass} mb-0`}>
+                    Description
+                  </label>
+                  {showCreateRequired && missingCreateFields.has('details') ? (
+                    <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-red-600">
+                      Required
+                    </span>
+                  ) : null}
+                </div>
                 <textarea
                   id="event-details"
                   value={form.details}
                   onChange={(e) => handleChange('details', e.target.value)}
                   rows={5}
-                  className={`${inputClass} min-h-[140px] resize-y leading-relaxed`}
+                  aria-invalid={showCreateRequired && missingCreateFields.has('details')}
+                  className={`${inputClass} min-h-[140px] resize-y leading-relaxed ${
+                    showCreateRequired && missingCreateFields.has('details')
+                      ? 'border-red-400 ring-1 ring-red-200/60'
+                      : ''
+                  }`}
                   placeholder="What should people expect? Any gear, cost, or meeting spot details?"
                 />
               </div>
@@ -585,6 +818,14 @@ export default function EventForm() {
                   Cover photo
                 </h2>
                 <span className="h-px flex-1 bg-gradient-to-r from-brand-terracotta/35 to-transparent" aria-hidden />
+                {imageTooLargeServer ? (
+                  <span
+                    className="shrink-0 text-sm font-semibold text-red-600"
+                    role="alert"
+                  >
+                    image too large
+                  </span>
+                ) : null}
               </div>
               <span id="event-image-label" className="sr-only">
                 Upload event image
@@ -710,15 +951,25 @@ export default function EventForm() {
               ) : null}
             </section>
 
-            <div className="flex justify-center border-t border-brand-forest/10 pt-8 sm:justify-end">
-              <button
-                type="submit"
-                disabled={!isEdit && dateInPastError}
-                className="w-full rounded-2xl bg-gradient-to-r from-brand-forest to-[#5f7360] px-8 py-3.5 text-center text-sm font-bold uppercase tracking-wide text-white shadow-fab transition-all hover:shadow-fab-hover hover:brightness-[1.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-terracotta focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none sm:w-auto sm:min-w-[240px]"
-                aria-label={isEdit ? 'Save changes' : 'Create event'}
-              >
-                {isEdit ? 'Save changes' : 'Create event'}
-              </button>
+            <div className="flex flex-col items-stretch gap-3 border-t border-brand-forest/10 pt-8 sm:items-end">
+              {createEventError ? (
+                <p
+                  className="w-full text-right text-sm font-semibold text-red-600 sm:max-w-xl"
+                  role="alert"
+                >
+                  {createEventError}
+                </p>
+              ) : null}
+              <div className="flex justify-center sm:justify-end">
+                <button
+                  type="submit"
+                  disabled={!isEdit && dateInPastError}
+                  className="w-full rounded-2xl bg-gradient-to-r from-brand-forest to-[#5f7360] px-8 py-3.5 text-center text-sm font-bold uppercase tracking-wide text-white shadow-fab transition-all hover:shadow-fab-hover hover:brightness-[1.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-terracotta focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none sm:w-auto sm:min-w-[240px]"
+                  aria-label={isEdit ? 'Save changes' : 'Create event'}
+                >
+                  {isEdit ? 'Save changes' : 'Create event'}
+                </button>
+              </div>
             </div>
           </form>
         </div>

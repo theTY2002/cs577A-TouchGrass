@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "node index.js"
+    "dev": "node index.js",
+    "db:ensure-image-column": "node scripts/ensure-posts-image-url.js",
+    "db:ensure-created-at": "node scripts/ensure-posts-created-at.js"
   },
   "keywords": [],
   "author": "",

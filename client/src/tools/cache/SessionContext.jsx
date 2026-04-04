@@ -37,14 +37,15 @@ const LEGACY_AUTH_KEYS = [
  * @property {string} [username]
  */
 
-/** @param {{ id?: number|string, email?: string, displayName?: string, username?: string } | null | undefined} u */
+/** @param {{ id?: number|string, email?: string, displayName?: string, name?: string, username?: string } | null | undefined} u */
 function mapApiUserToSession(u) {
   if (!u) return null;
+  const fromDisplay = u.displayName != null ? String(u.displayName).trim() : '';
+  const fromName = u.name != null ? String(u.name).trim() : '';
   return {
     id: u.id,
     email: String(u.email ?? '').trim(),
-    displayName: u.displayName != null ? String(u.displayName).trim() : '',
-    username: u.username != null ? String(u.username).trim() : '',
+    displayName: fromDisplay || fromName,
   };
 }
 

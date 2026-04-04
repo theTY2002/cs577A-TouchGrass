@@ -10,7 +10,10 @@ const pool = new Pool({
 // PATCH: Update the authenticated user's name + profile fields
 router.patch('/profile', requireAuth, async (req, res) => {
     const userId = req.user.id;
-    const { name, bio, major, interests, avatar_url } = req.body;
+    const body = req.body || {};
+    const { name, bio, major, interests } = body;
+    const patchAvatar = Object.prototype.hasOwnProperty.call(body, 'avatar_url');
+    const nextAvatarUrl = patchAvatar ? (body.avatar_url ?? null) : null;
 
     try {
         // Update display name on the users row
@@ -21,7 +24,7 @@ router.patch('/profile', requireAuth, async (req, res) => {
             );
         }
 
-        // Upsert extended profile fields
+        // Upsert extended profile fields (avatar_url only when the client sends the key so we can clear with null)
         await pool.query(
             `INSERT INTO user_profiles (user_id, bio, major, interests, avatar_url, updated_at)
              VALUES ($1, $2, $3, $4, $5, NOW())
@@ -29,9 +32,9 @@ router.patch('/profile', requireAuth, async (req, res) => {
                bio        = EXCLUDED.bio,
                major      = EXCLUDED.major,
                interests  = EXCLUDED.interests,
-               avatar_url = COALESCE(EXCLUDED.avatar_url, user_profiles.avatar_url),
+               avatar_url = CASE WHEN $6::boolean THEN EXCLUDED.avatar_url ELSE user_profiles.avatar_url END,
                updated_at = NOW();`,
-            [userId, bio ?? null, major ?? null, interests ?? null, avatar_url ?? null]
+            [userId, bio ?? null, major ?? null, interests ?? null, nextAvatarUrl, patchAvatar]
         );
 
         res.json({ ok: true });

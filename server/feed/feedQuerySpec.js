@@ -2,7 +2,7 @@
  * @typedef {object} FeedQuerySpec
  * @property {string[]} tags
  * @property {string} q
- * @property {'date_desc'|'date_asc'} sort
+ * @property {'posted_desc'|'date_desc'|'date_asc'} sort
  * @property {string} date
  * @property {boolean} my_plans
  */
@@ -25,7 +25,13 @@ function parseFeedQuerySpec(q) {
   } else if (query.tag) {
     tags.push(String(query.tag).trim());
   }
-  const sort = query.sort === "date_asc" ? "date_asc" : "date_desc";
+  const raw = String(query.sort || "")
+    .trim()
+    .toLowerCase();
+  let sort = "posted_desc";
+  if (raw === "date_asc") sort = "date_asc";
+  else if (raw === "date_desc") sort = "date_desc";
+  else if (raw === "posted_desc" || raw === "newest") sort = "posted_desc";
   return {
     tags: tags.filter(Boolean),
     q: String(query.q || query.search || "").trim(),

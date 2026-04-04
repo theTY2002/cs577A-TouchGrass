@@ -6,8 +6,11 @@ const { pool } = require('../db/pool');
 
 const router = express.Router();
 
-function isUscEmail(value) {
-  return String(value).trim().toLowerCase().includes('@usc');
+function isUscEduEmail(value) {
+  const normalized = String(value).trim().toLowerCase();
+  const at = normalized.lastIndexOf('@');
+  if (at < 1) return false;
+  return normalized.slice(at + 1) === 'usc.edu';
 }
 
 router.post('/signup', async (req, res) => {
@@ -21,9 +24,9 @@ router.post('/signup', async (req, res) => {
       console.log('[auth] signup rejected: missing email/password');
       return res.status(400).json({ error: 'Email and password are required' });
     }
-    if (!isUscEmail(email)) {
+    if (!isUscEduEmail(email)) {
       console.log(`[auth] signup rejected for ${email}: non-USC email`);
-      return res.status(400).json({ error: 'USC email is required' });
+      return res.status(400).json({ error: 'A @usc.edu email address is required' });
     }
     if (password.length < 8) {
       console.log(`[auth] signup rejected for ${email}: short password`);
@@ -47,6 +50,10 @@ router.post('/login', async (req, res) => {
     if (!email || !password) {
       console.log('[auth] login rejected: missing email/password');
       return res.status(400).json({ error: 'Email and password are required' });
+    }
+    if (!isUscEduEmail(email)) {
+      console.log(`[auth] login rejected for ${email}: non-USC email`);
+      return res.status(400).json({ error: 'A @usc.edu email address is required' });
     }
 
     const user = await authenticateUser({ email, password });

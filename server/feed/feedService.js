@@ -49,7 +49,11 @@ async function queryFeedPage(pool, { spec, userId, offset, limit }) {
 
   const whereSql = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
   const orderBy =
-    spec.sort === "date_asc" ? "p.datetime_start ASC" : "p.datetime_start DESC";
+    spec.sort === "date_asc"
+      ? "p.datetime_start ASC NULLS LAST, p.p_id ASC"
+      : spec.sort === "date_desc"
+        ? "p.datetime_start DESC NULLS LAST, p.p_id DESC"
+        : "COALESCE(p.created_at, p.datetime_start) DESC NULLS LAST, p.p_id DESC";
 
   const lim = addParam(limitPlusOne);
   const off = addParam(offset);
@@ -64,6 +68,7 @@ async function queryFeedPage(pool, { spec, userId, offset, limit }) {
       p.tags,
       p.capacity AS max_members,
       p.status,
+      p.image_url,
       p.owner_user_id,
       SPLIT_PART(u.email, '@', 1) AS author_name,
       COALESCE(mc.cnt, 0)::int AS current_members

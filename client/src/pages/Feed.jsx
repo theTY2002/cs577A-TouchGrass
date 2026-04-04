@@ -28,6 +28,23 @@ function normalizeEventForFeed(e) {
   return { ...e, tags };
 }
 
+/** YYYY-MM-DD in local time, for calendar-day comparisons. */
+function localDateKey(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** True if the event falls on today or an earlier calendar day (local). */
+function isPastOrTodayFeedEvent(event) {
+  const raw = event?.dateTime || event?.datetime;
+  if (!raw) return false;
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return false;
+  return localDateKey(d) <= localDateKey(new Date());
+}
+
 export default function Feed() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -63,6 +80,7 @@ export default function Feed() {
   const [joinNotice, setJoinNotice] = useState(null);
   const [hasMore, setHasMore] = useState(true);
   const [nextOffset, setNextOffset] = useState(0);
+  const [showPastEvents, setShowPastEvents] = useState(false);
 
   const joinedIds = useMemo(() => new Set(joinedEventIds), [joinedEventIds]);
 
@@ -297,6 +315,16 @@ export default function Feed() {
     return result;
   }, [events, selectedTags, selectedDate, myPlansOnly, joinedIds, user]);
 
+  const { upcomingEvents, pastEvents } = useMemo(() => {
+    const past = [];
+    const upcoming = [];
+    for (const e of filteredEvents) {
+      if (isPastOrTodayFeedEvent(e)) past.push(e);
+      else upcoming.push(e);
+    }
+    return { upcomingEvents: upcoming, pastEvents: past };
+  }, [filteredEvents]);
+
   const handleJoin = async (event) => {
     if (user?.id == null) return;
     setJoinNotice(null);
@@ -341,6 +369,11 @@ export default function Feed() {
   };
 
   const showEmpty = !loading && !error && filteredEvents.length === 0;
+  const showUpcomingEmpty =
+    !loading &&
+    !error &&
+    filteredEvents.length > 0 &&
+    upcomingEvents.length === 0;
 
   return (
     <>
@@ -411,37 +444,88 @@ export default function Feed() {
                 filteredEvents.length ? 'opacity-100' : 'opacity-70'
               }`}
             >
-              {filteredEvents.length > 0 ? (
-                <>
-                  {filteredEvents.map((event, index) => (
-                    <div
-                      key={event.id}
-                      className="animate-card-enter opacity-0"
-                      style={{ animationDelay: `${index * 80}ms` }}
+              {showUpcomingEmpty && (
+                <div className="col-span-full rounded-xl border border-neutral-200 bg-white/60 px-4 py-8 text-center text-neutral-600">
+                  <p className="text-base font-medium text-neutral-800">
+                    No upcoming events{hasActiveFilters ? ' match your filters' : ''}.
+                  </p>
+                  {pastEvents.length > 0 && (
+                    <p className="mt-2 text-sm text-neutral-500">
+                      Past events are below — use Show to reveal them.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {upcomingEvents.map((event, index) => (
+                <div
+                  key={event.id}
+                  className="animate-card-enter opacity-0"
+                  style={{ animationDelay: `${index * 80}ms` }}
+                >
+                  <EventCard
+                    event={event}
+                    isCreatedByUser={isPlanCreatedByCurrentUser(event, user)}
+                    isJoined={
+                      joinedIds.has(event.id) || isPlanCreatedByCurrentUser(event, user)
+                    }
+                    onViewDetails={handleViewEvent}
+                    onJoin={handleJoin}
+                    index={index}
+                  />
+                </div>
+              ))}
+
+              {pastEvents.length > 0 && (
+                <div className="col-span-full mt-2 border-t border-neutral-200 pt-8">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <h2 className="text-lg font-semibold text-neutral-900">Past events</h2>
+                    <button
+                      type="button"
+                      onClick={() => setShowPastEvents((v) => !v)}
+                      className="inline-flex w-fit items-center justify-center rounded-full border-2 border-brand-forest bg-white px-5 py-2.5 text-sm font-semibold text-brand-forest shadow-sm transition-all duration-200 hover:bg-brand-forest hover:text-white active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-brand-forest focus:ring-offset-2 focus:ring-offset-page"
+                      aria-expanded={showPastEvents}
                     >
-                      <EventCard
-                        event={event}
-                        isCreatedByUser={isPlanCreatedByCurrentUser(event, user)}
-                        isJoined={
-                          joinedIds.has(event.id) || isPlanCreatedByCurrentUser(event, user)
-                        }
-                        onViewDetails={handleViewEvent}
-                        onJoin={handleJoin}
-                        index={index}
-                      />
-                    </div>
-                  ))}
-                  {hasMore && (
-                    <div
-                      ref={loadMoreSentinelRef}
-                      className="col-span-full flex min-h-[48px] justify-center py-6 text-sm text-neutral-500"
-                      aria-hidden
-                    >
-                      {loadingMore ? 'Loading more…' : null}
+                      {showPastEvents ? 'Hide past events' : 'Show past events'}
+                    </button>
+                  </div>
+                  {showPastEvents && (
+                    <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-7 lg:grid-cols-3">
+                      {pastEvents.map((event, index) => (
+                        <div
+                          key={event.id}
+                          className="animate-card-enter opacity-0"
+                          style={{ animationDelay: `${index * 80}ms` }}
+                        >
+                          <EventCard
+                            event={event}
+                            isCreatedByUser={isPlanCreatedByCurrentUser(event, user)}
+                            isJoined={
+                              joinedIds.has(event.id) ||
+                              isPlanCreatedByCurrentUser(event, user)
+                            }
+                            onViewDetails={handleViewEvent}
+                            onJoin={handleJoin}
+                            index={index}
+                          />
+                        </div>
+                      ))}
                     </div>
                   )}
-                </>
-              ) : showEmpty ? (
+                </div>
+              )}
+
+              {hasMore && !showEmpty && (
+                <div
+                  ref={loadMoreSentinelRef}
+                  className="col-span-full flex min-h-[48px] justify-center py-6 text-sm text-neutral-500"
+                  aria-hidden
+                >
+                  {loadingMore ? 'Loading more…' : null}
+                </div>
+              )}
+
+              {showEmpty ? (
                 <div className="col-span-full text-center py-16 text-gray-500">
                   <p className="text-lg font-medium text-gray-600">
                     {myPlansOnly

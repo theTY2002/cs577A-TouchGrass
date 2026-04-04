@@ -6,6 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { TouchGrassMark } from '../components/TouchGrassIcon';
 import { useSession } from '../tools/cache/SessionContext';
 import { signUpWithApi } from '../tools/api';
+import { isUscEduEmail } from '../tools/uscEmail';
 
 const inputClass =
   'w-full rounded-[10px] border border-[#DBDBDB] bg-white px-4 py-3 text-[15px] text-neutral-900 placeholder:text-neutral-400 outline-none transition-shadow focus:border-brand-forest focus:ring-2 focus:ring-brand-forest/25';
@@ -17,10 +18,6 @@ const sectionTitleClass = 'text-lg font-bold text-brand-forest sm:text-xl';
 const sectionClass =
   'mt-8 space-y-4 border-t border-[#DBDBDB] pt-8 first:mt-0 first:border-t-0 first:pt-0';
 
-function isUscEmail(value) {
-  return String(value).trim().toLowerCase().includes('@usc');
-}
-
 export default function Signup() {
   const navigate = useNavigate();
   const { signedIn } = useSession();
@@ -30,7 +27,14 @@ export default function Signup() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  /** After a submit with a bad/empty email, show the inline hint even if the field looks empty. */
+  const [emailSubmitAttempted, setEmailSubmitAttempted] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const emailTrimmed = email.trim();
+  const emailInvalid = !isUscEduEmail(email);
+  const showEmailError =
+    emailInvalid && (emailTrimmed.length > 0 || emailSubmitAttempted);
 
   useEffect(() => {
     document.title = 'TouchGrass · Sign up';
@@ -49,8 +53,8 @@ export default function Signup() {
       return;
     }
 
-    if (!isUscEmail(email)) {
-      setError('USC students only: use a USC email that includes @usc (for example, name@usc.edu).');
+    if (!isUscEduEmail(email)) {
+      setEmailSubmitAttempted(true);
       return;
     }
 
@@ -96,8 +100,8 @@ export default function Signup() {
           </h1>
           <p className="mt-2 text-[15px] leading-snug text-neutral-800">
             <span className="font-semibold text-brand-forest">USC students only.</span> Create your account
-            to join campus events and plans. You must sign up with a USC email address that includes{' '}
-            <span className="font-mono text-[13px]">@usc</span> (for example,{' '}
+            to join campus events and plans. You must use a{' '}
+            <span className="font-mono text-[13px]">@usc.edu</span> email (for example,{' '}
             <span className="font-mono text-[13px]">you@usc.edu</span>).
           </p>
 
@@ -148,22 +152,42 @@ export default function Signup() {
             <div className={sectionClass}>
               <h2 className={sectionTitleClass}>Contact</h2>
               <p className="mt-2 text-xs leading-relaxed text-neutral-600">
-                USC email required — your address must contain <span className="font-mono">@usc</span>{' '}
-                (e.g. <span className="font-mono">you@usc.edu</span>).
+                <span className="font-mono">@usc.edu</span> email required.
               </p>
               <div className="pt-1">
-                <label htmlFor="signup-email" className={labelClass}>
-                  USC email
-                </label>
+                <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+                  <label htmlFor="signup-email" className="text-sm font-bold text-black">
+                    USC email
+                  </label>
+                  {showEmailError ? (
+                    <span
+                      id="signup-email-error"
+                      role="alert"
+                      className="text-sm font-semibold text-red-700"
+                    >
+                      Must be a USC student
+                    </span>
+                  ) : null}
+                </div>
                 <input
                   id="signup-email"
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setEmail(next);
+                    if (isUscEduEmail(next)) setEmailSubmitAttempted(false);
+                  }}
                   placeholder="you@usc.edu"
                   required
-                  className={inputClass}
+                  className={
+                    showEmailError
+                      ? `${inputClass} border-red-300 focus:border-red-400 focus:ring-red-200/40`
+                      : inputClass
+                  }
                   autoComplete="email"
+                  aria-invalid={showEmailError ? true : undefined}
+                  aria-describedby={showEmailError ? 'signup-email-error' : undefined}
                 />
               </div>
             </div>

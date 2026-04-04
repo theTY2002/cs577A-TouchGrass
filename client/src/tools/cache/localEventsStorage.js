@@ -79,15 +79,20 @@ export function isPlanInMyPlans(event, joinedIds, currentUser = null) {
 
 /**
  * Build a full event record from the create/edit form.
- * @param {object} form — title, date, location, capacity, tags[], details, imageUrl
+ * @param {object} form — title, date, time, location, capacity, tags[], details, imageUrl
  * @param {string} contactEmail — saved user email (organizer context)
  * @param {{ id?: number|string, email?: string } | null} [currentUser]
  * @param {object|null} existing — when editing a local event, merge counts + id
  */
+function timeWithSeconds(timeStr) {
+  const t = (timeStr && String(timeStr).trim()) || '12:00';
+  return t.length === 5 ? `${t}:00` : t;
+}
+
 export function buildEventFromForm(form, contactEmail, currentUser = null, existing = null) {
   const datePart =
     form.date?.trim() || (existing?.dateTime || existing?.datetime || '').slice(0, 10) || new Date().toISOString().slice(0, 10);
-  const dateTime = `${datePart}T12:00:00`;
+  const dateTime = `${datePart}T${timeWithSeconds(form.time)}`;
   const tags = form.tags?.length ? [...form.tags] : ['Event'];
   const localPart = (contactEmail || 'you').split('@')[0] || 'You';
   const initials = localPart.slice(0, 2).toUpperCase();

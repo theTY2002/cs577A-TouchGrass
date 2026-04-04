@@ -12,8 +12,8 @@ test('travel from login to event details', async ({ page }) => {
   await page.goto(BASE_URL);
   await expect(page).toHaveURL(`${BASE_URL}/login`);
 
-  // 2. Fill login form (placeholder auth accepts any email/password)
-  await page.getByLabel(/email/i).fill('test@example.com');
+  // 2. Fill login form (@usc.edu required on client and server)
+  await page.getByLabel(/email/i).fill('test@usc.edu');
   await page.getByLabel(/password/i).fill('password123');
 
   // 3. Submit login

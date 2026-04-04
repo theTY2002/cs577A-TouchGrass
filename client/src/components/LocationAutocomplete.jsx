@@ -39,6 +39,7 @@ export default function LocationAutocomplete({
   className = '',
   disabled = false,
   leadingIcon = null,
+  invalid = false,
 }) {
   const reactId = useId();
   const inputId = idProp || `location-autocomplete-${reactId}`;
@@ -201,6 +202,7 @@ export default function LocationAutocomplete({
       aria-expanded={open}
       aria-controls={open ? listId : undefined}
       aria-busy={loading}
+      aria-invalid={invalid || undefined}
       className={leadingIcon ? `${className} pl-11` : className}
       placeholder={placeholder}
     />

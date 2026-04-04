@@ -1,15 +1,23 @@
 const { pool } = require("../db/pool");
 const { hashPassword, verifyPassword } = require("./passwords");
 
+/** No `users.username` column — use email local part for session/UI when a handle is useful. */
+function emailLocalPart(email) {
+  const s = String(email || "").trim().toLowerCase();
+  const at = s.lastIndexOf("@");
+  return at >= 1 ? s.slice(0, at) : "";
+}
+
 function toSafeUser(row) {
   return {
     id: row.u_id,
     email: row.email,
-    displayName: row.username || "",
+    displayName: String(row.name ?? "").trim(),
+    username: emailLocalPart(row.email),
   };
 }
 
-async function createUser({ email, password, displayName, username }) {
+async function createUser({ email, password, displayName, username: _username }) {
   const passwordHash = await hashPassword(password);
   const normalizedEmail = String(email).trim().toLowerCase();
   const normalizedDisplayName = String(displayName || "").trim();
@@ -44,11 +52,11 @@ async function createUser({ email, password, displayName, username }) {
 
   await pool.query(
     `
-      INSERT INTO user_profiles (user_id, bio)
-      VALUES ($1, $2)
+      INSERT INTO user_profiles (user_id, bio, major, interests, avatar_url, updated_at)
+      VALUES ($1, NULL, NULL, NULL, NULL, NOW())
       ON CONFLICT (user_id) DO NOTHING;
     `,
-    [user.u_id, null],
+    [user.u_id],
   );
 
   return toSafeUser(user);

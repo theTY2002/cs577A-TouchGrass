@@ -33,8 +33,8 @@ function writeAllProfiles(profilesByEmail) {
 }
 
 export const defaultProfileSettings = {
-  name: 'Alex Chen',
-  bio: 'Love hiking, coffee, and spontaneous study sessions.',
+  name: '',
+  bio: '',
   email: '',
   avatarDataUrl: null,
   emailNotifications: true,

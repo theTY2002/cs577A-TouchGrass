@@ -6,6 +6,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useSession } from '../tools/cache/SessionContext';
 import { setTouchGrassTitle } from '../tools/ui/documentTitle';
 import { TouchGrassMark } from '../components/TouchGrassIcon';
+import { isUscEduEmail } from '../tools/uscEmail';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -45,6 +46,12 @@ export default function Login() {
     e.preventDefault();
     setError('');
     setSuccess('');
+
+    if (!isUscEduEmail(email)) {
+      setError('Log in with your @usc.edu email address.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -139,7 +146,7 @@ export default function Login() {
 
             <div>
               <label htmlFor="email" className="sr-only">
-                Email
+                USC email
               </label>
               <input
                 id="email"
@@ -149,7 +156,7 @@ export default function Login() {
                   setEmail(e.target.value);
                   setSuccess('');
                 }}
-                placeholder="Email or username"
+                placeholder="you@usc.edu"
                 required
                 className={inputClass}
                 autoComplete="email"

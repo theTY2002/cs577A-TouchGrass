@@ -1,12 +1,16 @@
 const express = require("express");
 const router = express.Router();
-const { Pool } = require("pg");
+const { pool } = require("../db/pool");
 const { invalidateFeedCache } = require("../feed/feedCache");
 const { requireAuth } = require("../middleware/auth");
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
+function normalizePostImageUrl(body) {
+  if (!body || typeof body !== "object") return null;
+  const raw = body.image_url ?? body.imageUrl;
+  if (raw == null) return null;
+  const s = String(raw).trim();
+  return s !== "" ? s : null;
+}
 
 // POST: Create a new event and its associated group
 router.post("/", async (req, res) => {
@@ -20,15 +24,17 @@ router.post("/", async (req, res) => {
     capacity,
   } = req.body;
 
+  const imageUrlValue = normalizePostImageUrl(req.body);
+
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
 
     // 1. Create the post in the posts table
     const postResult = await client.query(
-      `INSERT INTO posts (owner_user_id, title, tags, datetime_start, location_text, plan_text, capacity, status)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, 'open') 
-             RETURNING p_id;`,
+      `INSERT INTO posts (owner_user_id, title, tags, datetime_start, location_text, plan_text, capacity, status, image_url, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, 'open', $8, now())
+             RETURNING p_id, image_url;`,
       [
         owner_user_id,
         title,
@@ -37,10 +43,14 @@ router.post("/", async (req, res) => {
         location_text,
         plan_text,
         capacity,
+        imageUrlValue,
       ],
     );
 
-    const newPostId = postResult.rows[0].p_id;
+    const inserted = postResult.rows[0];
+    const newPostId = inserted.p_id;
+    const imageSaved =
+      inserted.image_url != null && String(inserted.image_url).trim() !== "";
 
     // 2. Automatically create a group for this post
     const groupResult = await client.query(
@@ -70,10 +80,17 @@ router.post("/", async (req, res) => {
       message: "Event and group successfully created",
       post_id: newPostId,
       chat_room_id: newRoomId,
+      image_saved: imageSaved,
     });
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});
     console.error("Error creating event:", error);
+    if (error.code === "42703") {
+      return res.status(500).json({
+        error:
+          "Database is missing posts.image_url. From the server folder run: npm run db:ensure-image-column",
+      });
+    }
     res.status(500).json({ error: "Failed to create the event" });
   } finally {
     client.release();
@@ -242,6 +259,7 @@ router.get("/:post_id", async (req, res) => {
                 p.tags, 
                 p.capacity AS max_members, 
                 p.status,
+                p.image_url,
                 SPLIT_PART(u.email, '@', 1) AS author_name,
                 COUNT(gm.user_id)::int AS current_members,
                 MAX(cr.r_id) AS chat_room_id

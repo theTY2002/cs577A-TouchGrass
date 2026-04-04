@@ -45,8 +45,16 @@ export function mapPostToEvent(row) {
     return BY_TAG[formatted];
   });
 
+  const rawStored = row.image_url ?? row.imageUrl;
+  const storedImage =
+    rawStored != null && String(rawStored).trim() !== ""
+      ? String(rawStored).trim()
+      : "";
+
   let imageUrl = DEFAULT_IMG;
-  if (primaryTag) {
+  if (storedImage) {
+    imageUrl = storedImage;
+  } else if (primaryTag) {
     const formattedTag =
       primaryTag.charAt(0).toUpperCase() + primaryTag.slice(1).toLowerCase();
     imageUrl = BY_TAG[formattedTag];
@@ -106,6 +114,8 @@ export function mapPostToEvent(row) {
     },
     description: row.description || "",
     location: row.location || "",
+    /** Same instant as dateTime; matches posts.datetime_start. */
+    datetime_start: dateTime,
     dateTime,
     capacity: row.max_members ?? 0,
     joinedCount: row.current_members ?? 0,
@@ -127,7 +137,7 @@ export function mapPostToEvent(row) {
  * @param {string[]} [opts.tags]
  * @param {string} [opts.date] YYYY-MM-DD
  * @param {string} [opts.q]
- * @param {'date_desc'|'date_asc'} [opts.sort]
+ * @param {'posted_desc'|'date_desc'|'date_asc'} [opts.sort] Default on server is posted_desc (newest post first).
  * @param {boolean} [opts.myPlans]
  */
 export async function fetchFeedPage({
@@ -176,7 +186,14 @@ export async function fetchFeedPage({
     events = data.map(mapPostToEvent);
     hasMore = false;
   } else if (data && Array.isArray(data.events)) {
-    events = data.events;
+    events = data.events.map((ev) => {
+      if (!ev || typeof ev !== "object") return ev;
+      if (ev.imageUrl) return ev;
+      if (ev.image_url != null && String(ev.image_url).trim() !== "") {
+        return { ...ev, imageUrl: String(ev.image_url).trim() };
+      }
+      return ev;
+    });
     hasMore = Boolean(data.hasMore);
     outOffset = data.offset ?? offset;
     outLimit = data.limit ?? limit;
@@ -235,6 +252,14 @@ export async function leaveEvent(postId) {
   return data || {};
 }
 
+/** True when the server rejected the body as too large (e.g. express/body-parser 413). */
+export function isPayloadTooLargeError(err) {
+  if (!err || typeof err !== "object") return false;
+  if (err.status === 413) return true;
+  const msg = String(err.message || "").toLowerCase();
+  return msg.includes("too large") || msg.includes("payloadtoolarge");
+}
+
 // Create a new event
 export async function createEvent(eventData) {
   console.log("[client/api] createEvent start");
@@ -244,9 +269,16 @@ export async function createEvent(eventData) {
     body: JSON.stringify(eventData),
   });
 
-  if (!response.ok) throw new Error("Failed to create event");
+  const data = await parseJsonSafe(response);
+  if (!response.ok) {
+    const err = new Error(
+      (data && data.error) || "Failed to create event",
+    );
+    err.status = response.status;
+    throw err;
+  }
   console.log("[client/api] createEvent success");
-  return response.json();
+  return data && typeof data === "object" ? data : {};
 }
 
 // Fetch a user profile
@@ -268,7 +300,11 @@ export async function updateUserProfile({ name, bio, major, interests, avatar_ur
     body: JSON.stringify({ name, bio, major, interests, avatar_url }),
   });
   const data = await parseJsonSafe(response);
-  if (!response.ok) throw new Error(data?.error || "Failed to update profile");
+  if (!response.ok) {
+    const err = new Error(data?.error || "Failed to update profile");
+    err.status = response.status;
+    throw err;
+  }
   return data;
 }
 

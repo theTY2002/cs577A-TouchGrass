@@ -45,8 +45,16 @@ function mapFeedRow(row) {
     return BY_TAG[formatted];
   });
 
+  const rawStored = row.image_url ?? row.imageUrl;
+  const storedImage =
+    rawStored != null && String(rawStored).trim() !== ''
+      ? String(rawStored).trim()
+      : '';
+
   let imageUrl = DEFAULT_IMG;
-  if (primaryTag) {
+  if (storedImage) {
+    imageUrl = storedImage;
+  } else if (primaryTag) {
     const formattedTag =
       primaryTag.charAt(0).toUpperCase() + primaryTag.slice(1).toLowerCase();
     imageUrl = BY_TAG[formattedTag];
@@ -81,6 +89,8 @@ function mapFeedRow(row) {
     },
     description: row.description || '',
     location: row.location || '',
+    /** Same instant as dateTime; matches posts.datetime_start. */
+    datetime_start: dateTime,
     dateTime,
     capacity: row.max_members ?? 0,
     joinedCount: row.current_members ?? 0,

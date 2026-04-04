@@ -12,6 +12,13 @@ import { useSession } from '../cache/SessionContext';
 
 const ProfileSettingsContext = createContext(null);
 
+function withSessionDisplayName(loaded, displayName) {
+  const hasStoredName = Boolean(String(loaded.name || '').trim());
+  const dn = String(displayName || '').trim();
+  if (!hasStoredName && dn) return { ...loaded, name: dn };
+  return loaded;
+}
+
 export function ProfileSettingsProvider({ children }) {
   const { signedIn, user } = useSession();
   const sessionEmail = signedIn && user?.email ? user.email : '';
@@ -19,20 +26,22 @@ export function ProfileSettingsProvider({ children }) {
   const [profile, setProfile] = useState(() => loadProfileSettings(sessionEmail));
 
   const refreshProfile = useCallback(() => {
-    setProfile(loadProfileSettings(sessionEmail));
-  }, [sessionEmail]);
+    setProfile(withSessionDisplayName(loadProfileSettings(sessionEmail), user?.displayName));
+  }, [sessionEmail, user?.displayName]);
 
   useEffect(() => {
     if (signedIn) {
-      setProfile(loadProfileSettings(sessionEmail));
+      setProfile(
+        withSessionDisplayName(loadProfileSettings(sessionEmail), user?.displayName),
+      );
     } else {
       setProfile({ ...defaultProfileSettings, email: '' });
     }
-  }, [signedIn, sessionEmail]);
+  }, [signedIn, sessionEmail, user?.displayName]);
 
   useEffect(() => {
     const onLocalSave = () => {
-      setProfile(loadProfileSettings(sessionEmail));
+      setProfile(withSessionDisplayName(loadProfileSettings(sessionEmail), user?.displayName));
     };
     const onStorage = (e) => {
       if (e.key === PROFILE_SETTINGS_STORAGE_KEY) onLocalSave();
@@ -43,7 +52,7 @@ export function ProfileSettingsProvider({ children }) {
       window.removeEventListener(PROFILE_SETTINGS_CHANGED_EVENT, onLocalSave);
       window.removeEventListener('storage', onStorage);
     };
-  }, [sessionEmail]);
+  }, [sessionEmail, user?.displayName]);
 
   const value = useMemo(() => ({ profile, refreshProfile }), [profile, refreshProfile]);
 

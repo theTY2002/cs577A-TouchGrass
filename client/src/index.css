@@ -113,6 +113,44 @@
   animation: heartPop 0.3s ease-out;
 }
 
+/* Create-event success: redirect progress bar (syncs with ~4s client timeout) */
+@keyframes eventCreatedBar {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.animate-event-created-bar {
+  animation: eventCreatedBar 4s linear forwards;
+  transform-origin: left center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-event-created-bar {
+    animation: none;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes eventCreatedSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.event-created-spinner {
+  animation: eventCreatedSpin 0.85s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .event-created-spinner {
+    animation: none;
+  }
+}
+
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;

@@ -20,9 +20,12 @@ router.post("/", async (req, res) => {
     capacity,
   } = req.body;
 
+  const client = await pool.connect();
   try {
+    await client.query("BEGIN");
+
     // 1. Create the post in the posts table
-    const postResult = await pool.query(
+    const postResult = await client.query(
       `INSERT INTO posts (owner_user_id, title, tags, datetime_start, location_text, plan_text, capacity, status)
              VALUES ($1, $2, $3, $4, $5, $6, $7, 'open') 
              RETURNING p_id;`,
@@ -40,7 +43,7 @@ router.post("/", async (req, res) => {
     const newPostId = postResult.rows[0].p_id;
 
     // 2. Automatically create a group for this post
-    const groupResult = await pool.query(
+    const groupResult = await client.query(
       `INSERT INTO groups (post_id) VALUES ($1) RETURNING g_id;`,
       [newPostId],
     );
@@ -48,20 +51,32 @@ router.post("/", async (req, res) => {
     const newGroupId = groupResult.rows[0].g_id;
 
     // 3. Automatically add the creator as a member of their own group
-    await pool.query(
+    await client.query(
       `INSERT INTO group_members (group_id, user_id, role) VALUES ($1, $2, 'admin');`,
       [newGroupId, owner_user_id],
     );
 
+    // 4. One chat room per group (chat_messages.room_id → chat_rooms.r_id)
+    const roomResult = await client.query(
+      `INSERT INTO chat_rooms (group_id) VALUES ($1) RETURNING r_id;`,
+      [newGroupId],
+    );
+    const newRoomId = roomResult.rows[0].r_id;
+
+    await client.query("COMMIT");
     invalidateFeedCache();
 
     res.status(201).json({
       message: "Event and group successfully created",
       post_id: newPostId,
+      chat_room_id: newRoomId,
     });
   } catch (error) {
+    await client.query("ROLLBACK").catch(() => {});
     console.error("Error creating event:", error);
     res.status(500).json({ error: "Failed to create the event" });
+  } finally {
+    client.release();
   }
 });
 
@@ -228,10 +243,12 @@ router.get("/:post_id", async (req, res) => {
                 p.capacity AS max_members, 
                 p.status,
                 SPLIT_PART(u.email, '@', 1) AS author_name,
-                COUNT(gm.user_id)::int AS current_members
+                COUNT(gm.user_id)::int AS current_members,
+                MAX(cr.r_id) AS chat_room_id
             FROM posts p
             JOIN users u ON p.owner_user_id = u.u_id
             LEFT JOIN groups g ON p.p_id = g.post_id
+            LEFT JOIN chat_rooms cr ON cr.group_id = g.g_id
             LEFT JOIN group_members gm ON g.g_id = gm.group_id
             WHERE p.p_id = $1
             GROUP BY p.p_id, u.email;

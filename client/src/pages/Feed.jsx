@@ -15,6 +15,13 @@ import { fetchFeedPage, joinEvent as joinEventApi } from '../tools/api';
 
 const PAGE_SIZE = 30;
 
+/** Pixels from viewport top; align with prior IntersectionObserver rootMargin -64px + small buffer. */
+const DOCK_HEADROOM_PX = 72;
+/** Scroll-Y gap: must scroll this far up past the dock line before undocking (prevents oscillation). */
+const DOCK_UNDOCK_HYSTERESIS_PX = 56;
+/** After undocking, require scrolling down this much again before docking (header/layout shifts sentinel doc position). */
+const DOCK_AFTER_UNDOCK_BUFFER_PX = 40;
+
 function normalizeEventForFeed(e) {
   if (!e || typeof e !== 'object' || Array.isArray(e)) return null;
   const tags = Array.isArray(e.tags) ? e.tags : [];
@@ -27,6 +34,12 @@ export default function Feed() {
   const { user, joinedEventIds, joinEvent, sessionReady, signedIn } = useSession();
   const sentinelRef = useRef(null);
   const loadMoreSentinelRef = useRef(null);
+  /** Scroll thresholds derived only while undocked — layout changes from docking do not move `window.scrollY`, so state stays stable. */
+  const dockScrollYRef = useRef(Number.POSITIVE_INFINITY);
+  const undockScrollYRef = useRef(0);
+  const dockScrollRafRef = useRef(0);
+  /** Tracks previous docked state for layout (bump thresholds before sync on undock). */
+  const prevDockedForFeedLayoutRef = useRef(false);
 
   const {
     selectedTags,
@@ -40,6 +53,8 @@ export default function Feed() {
     filtersDocked,
     setFiltersDocked,
   } = useFeedFilters();
+  const filtersDockedRef = useRef(filtersDocked);
+  filtersDockedRef.current = filtersDocked;
 
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -59,42 +74,127 @@ export default function Feed() {
     setFiltersDocked(false);
   }, [pathname, setFiltersDocked]);
 
+  const recalibrateDockScrollThresholds = useCallback(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia === 'undefined') return;
+    const mq = window.matchMedia('(min-width: 768px)');
+    if (!mq.matches) return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const docY = el.getBoundingClientRect().top + window.scrollY;
+    const dockAt = Math.max(0, docY - DOCK_HEADROOM_PX);
+    dockScrollYRef.current = dockAt;
+    undockScrollYRef.current = Math.max(0, dockAt - DOCK_UNDOCK_HYSTERESIS_PX);
+  }, []);
+
+  const syncFiltersDockedFromScroll = useCallback(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia === 'undefined') return;
+    const mq = window.matchMedia('(min-width: 768px)');
+    if (!mq.matches) {
+      setFiltersDocked(false);
+      return;
+    }
+    const y = window.scrollY;
+    setFiltersDocked((docked) => {
+      if (!docked) {
+        if (y >= dockScrollYRef.current) return true;
+        return false;
+      }
+      if (y < undockScrollYRef.current) return false;
+      return true;
+    });
+  }, [setFiltersDocked]);
+
+  /**
+   * Recompute dock/undock scroll-Y lines only in undocked layout.
+   * After a dock→undock transition, bump the dock line before syncing so layout/header shifts
+   * cannot cause an immediate re-dock in the same frame as useLayoutEffect (must run before paint).
+   */
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia === 'undefined') return;
+    const mq = window.matchMedia('(min-width: 768px)');
+    if (!mq.matches) return;
+
+    if (filtersDocked) {
+      prevDockedForFeedLayoutRef.current = true;
+      return;
+    }
+
+    recalibrateDockScrollThresholds();
+
+    const wasDocked = prevDockedForFeedLayoutRef.current;
+    prevDockedForFeedLayoutRef.current = false;
+
+    if (wasDocked) {
+      const y = window.scrollY;
+      dockScrollYRef.current = Math.max(
+        dockScrollYRef.current,
+        y + DOCK_AFTER_UNDOCK_BUFFER_PX,
+      );
+      undockScrollYRef.current = Math.max(0, dockScrollYRef.current - DOCK_UNDOCK_HYSTERESIS_PX);
+    }
+
+    syncFiltersDockedFromScroll();
+  }, [
+    filtersDocked,
+    loading,
+    pathname,
+    recalibrateDockScrollThresholds,
+    syncFiltersDockedFromScroll,
+  ]);
+
   useEffect(() => {
-    if (typeof IntersectionObserver === 'undefined' || typeof window.matchMedia === 'undefined') {
+    if (typeof window === 'undefined' || typeof window.matchMedia === 'undefined') {
       return undefined;
     }
     const mq = window.matchMedia('(min-width: 768px)');
-    let obs = null;
 
-    const sync = () => {
-      const el = sentinelRef.current;
-      if (obs) {
-        obs.disconnect();
-        obs = null;
-      }
+    const runSync = () => {
       if (!mq.matches) {
         setFiltersDocked(false);
         return;
       }
-      if (!el) return;
-      obs = new IntersectionObserver(
-        (entries) => {
-          const e = entries[0];
-          if (!e) return;
-          setFiltersDocked(!e.isIntersecting);
-        },
-        { root: null, rootMargin: '-64px 0px 0px 0px', threshold: 0 },
-      );
-      obs.observe(el);
+      syncFiltersDockedFromScroll();
     };
 
-    sync();
-    mq.addEventListener('change', sync);
-    return () => {
-      mq.removeEventListener('change', sync);
-      if (obs) obs.disconnect();
+    const onScroll = () => {
+      cancelAnimationFrame(dockScrollRafRef.current);
+      dockScrollRafRef.current = requestAnimationFrame(runSync);
     };
-  }, [pathname, setFiltersDocked]);
+
+    const onResize = () => {
+      cancelAnimationFrame(dockScrollRafRef.current);
+      dockScrollRafRef.current = requestAnimationFrame(() => {
+        if (!mq.matches) {
+          setFiltersDocked(false);
+          return;
+        }
+        if (!filtersDockedRef.current) {
+          recalibrateDockScrollThresholds();
+        }
+        syncFiltersDockedFromScroll();
+      });
+    };
+
+    const onMqChange = () => {
+      if (!mq.matches) {
+        setFiltersDocked(false);
+        return;
+      }
+      recalibrateDockScrollThresholds();
+      syncFiltersDockedFromScroll();
+    };
+
+    runSync();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onResize);
+    mq.addEventListener('change', onMqChange);
+    return () => {
+      cancelAnimationFrame(dockScrollRafRef.current);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onResize);
+      mq.removeEventListener('change', onMqChange);
+    };
+  }, [recalibrateDockScrollThresholds, syncFiltersDockedFromScroll, setFiltersDocked]);
 
   useEffect(() => {
     if (!sessionReady || !signedIn) return undefined;

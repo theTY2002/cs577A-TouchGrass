@@ -3,20 +3,21 @@
  */
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { TouchGrassMark } from '../components/TouchGrassIcon';
+import { TouchGrassMark } from '../tools/ui/TouchGrassIcon';
 import { useSession } from '../tools/cache/SessionContext';
 import { signUpWithApi } from '../tools/api';
-import { isUscEduEmail } from '../tools/uscEmail';
+import { isUscEduEmail } from '../tools/ui/uscEmail';
 
 const inputClass =
-  'w-full rounded-[10px] border border-[#DBDBDB] bg-white px-4 py-3 text-[15px] text-neutral-900 placeholder:text-neutral-400 outline-none transition-shadow focus:border-brand-forest focus:ring-2 focus:ring-brand-forest/25';
+  'w-full rounded-[10px] border border-[#DBDBDB] bg-white px-4 py-3 text-[15px] leading-relaxed text-ink placeholder:text-ink-muted/60 outline-none transition-shadow focus:border-brand-forest focus:ring-2 focus:ring-brand-forest/25';
 
-const labelClass = 'mb-1.5 block text-sm font-bold text-black';
+const labelClass = 'mb-1.5 block text-sm font-medium text-ink';
 
-const sectionTitleClass = 'text-lg font-bold text-brand-forest sm:text-xl';
+const sectionTitleClass =
+  'text-lg font-semibold leading-snug tracking-[-0.015em] text-brand-forest sm:text-xl';
 
 const sectionClass =
-  'mt-8 space-y-4 border-t border-[#DBDBDB] pt-8 first:mt-0 first:border-t-0 first:pt-0';
+  'mt-10 space-y-4 border-t border-[#DBDBDB] pt-10 first:mt-0 first:border-t-0 first:pt-0';
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -79,34 +80,34 @@ export default function Signup() {
   };
 
   return (
-    <div className="flex min-h-screen flex-1 flex-col bg-white">
+    <div className="flex min-h-screen flex-1 flex-col bg-[#fafaf8]">
       <header className="px-5 py-4">
         <Link
           to="/login"
           className="inline-flex items-center gap-2.5 rounded-lg outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-brand-forest"
         >
           <TouchGrassMark small />
-          <span className="font-semibold text-black">TouchGrass</span>
+          <span className="font-medium text-ink">TouchGrass</span>
         </Link>
       </header>
 
-      <main className="flex flex-1 flex-col px-6 py-10 sm:px-10">
+      <main className="flex flex-1 flex-col px-6 py-12 sm:px-10">
         <div className="mx-auto w-full max-w-[440px]">
           <h1
             id="signup-heading"
-            className="text-2xl font-bold tracking-tight text-black"
+            className="text-2xl font-semibold leading-[1.2] tracking-[-0.02em] text-ink"
           >
             Get started on TouchGrass
           </h1>
-          <p className="mt-2 text-[15px] leading-snug text-neutral-800">
-            <span className="font-semibold text-brand-forest">USC students only.</span> Create your account
+          <p className="mt-3 text-[15px] leading-[1.65] text-ink-muted">
+            <span className="font-medium text-brand-forest">USC students only.</span> Create your account
             to join campus events and plans. You must use a{' '}
             <span className="font-mono text-[13px]">@usc.edu</span> email (for example,{' '}
             <span className="font-mono text-[13px]">you@usc.edu</span>).
           </p>
 
           {/* Submitting this form triggers handleSubmit (Sign up button). */}
-          <form onSubmit={handleSubmit} className="mt-8 text-left" aria-labelledby="signup-heading">
+          <form onSubmit={handleSubmit} className="mt-10 text-left" aria-labelledby="signup-heading">
             {error && (
               <p className="mb-6 rounded-[10px] border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
                 {error}
@@ -151,19 +152,19 @@ export default function Signup() {
 
             <div className={sectionClass}>
               <h2 className={sectionTitleClass}>Contact</h2>
-              <p className="mt-2 text-xs leading-relaxed text-neutral-600">
+              <p className="mt-2 text-xs leading-relaxed text-ink-muted">
                 <span className="font-mono">@usc.edu</span> email required.
               </p>
               <div className="pt-1">
                 <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                  <label htmlFor="signup-email" className="text-sm font-bold text-black">
+                  <label htmlFor="signup-email" className="text-sm font-medium text-ink">
                     USC email
                   </label>
                   {showEmailError ? (
                     <span
                       id="signup-email-error"
                       role="alert"
-                      className="text-sm font-semibold text-red-700"
+                      className="text-sm font-medium text-red-700"
                     >
                       Must be a USC student
                     </span>
@@ -234,21 +235,21 @@ export default function Signup() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-10 w-full rounded-full bg-brand-forest py-3 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-forest/90 disabled:opacity-60"
+              className="mt-10 w-full rounded-full bg-brand-forest py-3 text-center text-sm font-medium text-white shadow-sm transition-colors hover:bg-brand-forest/90 disabled:opacity-60"
             >
               {loading ? 'Creating account…' : 'Sign up'}
             </button>
           </form>
 
-          <p className="mt-8 text-sm">
-            <span className="text-neutral-600">Already have an account? </span>
+          <p className="mt-10 text-sm leading-relaxed">
+            <span className="text-ink-muted">Already have an account? </span>
             {/* Navigates to login only (no sign-in API call from here). */}
-            <Link to="/login" className="font-semibold text-brand-forest hover:text-brand-forest/80">
+            <Link to="/login" className="font-medium text-brand-forest hover:text-brand-forest/80">
               Log in
             </Link>
           </p>
 
-          <p className="mt-14 text-center text-xs text-neutral-400">TouchGrass</p>
+          <p className="mt-16 text-center text-xs text-ink-muted/70">TouchGrass</p>
         </div>
       </main>
     </div>

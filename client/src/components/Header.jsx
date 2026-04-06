@@ -7,7 +7,7 @@ import { useSession } from '../tools/cache/SessionContext';
 import { setTouchGrassTitle } from '../tools/ui/documentTitle';
 import { useFeedFilters } from '../tools/context/FeedFiltersContext';
 import Filters, { MobileFeedFiltersMenu } from './Filters';
-import { TouchGrassLogoImg } from './TouchGrassIcon';
+import { TouchGrassLogoImg } from '../tools/ui/TouchGrassIcon';
 import { getProfileInitials } from '../tools/context/profileSettingsStorage';
 import { useProfileSettings } from '../tools/context/ProfileSettingsContext';
 

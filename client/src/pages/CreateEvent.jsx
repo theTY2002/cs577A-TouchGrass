@@ -13,7 +13,7 @@ import {
   isLocalUserEventId,
   updateLocalEvent,
 } from '../tools/cache/localEventsStorage';
-import LocationAutocomplete from '../components/LocationAutocomplete';
+import LocationAutocomplete from '../tools/ui/LocationAutocomplete';
 import { FEED_HERO_IMAGE } from '../components/Hero';
 import { createEvent, isPayloadTooLargeError } from '../tools/api';
 

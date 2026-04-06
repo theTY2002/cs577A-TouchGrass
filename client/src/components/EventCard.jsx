@@ -20,6 +20,7 @@ export default function EventCard({
   event,
   isJoined = false,
   isCreatedByUser = false,
+  showGroupFull = false,
   onViewDetails,
   onJoin,
   index = 0,
@@ -116,12 +117,12 @@ export default function EventCard({
 
   return (
     <article
-      className="group bg-white rounded-2xl overflow-hidden border border-gray-100/90 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 focus-within:ring-2 focus-within:ring-brand-forest focus-within:ring-offset-2 focus-within:ring-offset-page"
+      className="group flex h-full min-h-0 flex-col bg-white rounded-2xl overflow-hidden border border-gray-100/90 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 focus-within:ring-2 focus-within:ring-brand-forest focus-within:ring-offset-2 focus-within:ring-offset-page"
       style={{ animationDelay: `${index * 80}ms` }}
       aria-labelledby={`event-title-${event.id}`}
     >
-      {/* Image block - 4:3 aspect */}
-      <div className="relative aspect-[4/3] overflow-hidden">
+      {/* Image block - 4:3 aspect (fixed height for responsive equal-width columns) */}
+      <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden">
         <img
           src={imageUrl}
           alt=""
@@ -147,7 +148,7 @@ export default function EventCard({
         </span>
 
         {/* Attendee avatars — above title strip */}
-        <div className="absolute bottom-[4.25rem] left-3 z-20 flex -space-x-2">
+        <div className="absolute bottom-[4.25rem] right-3 z-20 flex -space-x-2">
           {avatarSlots.map((slot, i) => (
             <div
               key={i}
@@ -190,19 +191,22 @@ export default function EventCard({
 
       </div>
 
-      {/* Content panel */}
-      <div className="p-5 pt-4">
+      {/* Content panel — flex-1 + mt-auto on actions so cards match row height in the grid */}
+      <div className="flex min-h-0 flex-1 flex-col p-5 pt-4">
         {organizerName && (
           <p className="text-xs text-gray-500 mb-2">
             <span className="text-gray-400">Hosted by</span>{' '}
             <span className="font-medium text-gray-600">{organizerName}</span>
           </p>
         )}
-        <p className="text-gray-500 text-sm leading-relaxed line-clamp-2 mb-4">
+        <p
+          className="mb-3 text-sm leading-snug text-gray-500 line-clamp-1 break-words"
+          title={typeof description === 'string' && description.length > 0 ? description : undefined}
+        >
           {description}
         </p>
 
-        <div className="flex flex-col gap-1.5 mb-4">
+        <div className="mb-4 flex flex-col gap-1.5">
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-gray-400 flex-shrink-0" aria-hidden>
               <path fillRule="evenodd" d="M9.69 18.933l.003.001C9.89 19.02 10 19 10 19s.11.02.308-.066l.002-.001.006-.003.018-.008a5.741 5.741 0 00.281-.14c.186-.096.446-.24.757-.433.62-.384 1.445-.966 2.274-1.765C15.302 14.988 17 12.493 17 9A7 7 0 103 9c0 3.492 1.698 5.988 3.355 7.584a13.731 13.731 0 002.273 1.765 11.842 11.842 0 00.976.544l.062.029.018.008.006.003zM10 11.25a2.25 2.25 0 100-4.5 2.25 2.25 0 000 4.5z" clipRule="evenodd" />
@@ -219,7 +223,7 @@ export default function EventCard({
           )}
         </div>
 
-        <div className="relative flex flex-wrap items-center gap-2 mb-5">
+        <div className="relative mb-4 flex flex-wrap items-center gap-2">
           {isCreatedByUser && (
             <span
               className="rounded-full border-2 border-brand-forest bg-white/95 px-2.5 py-1 text-xs font-semibold text-brand-forest shadow-sm"
@@ -276,7 +280,17 @@ export default function EventCard({
           )}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="mt-auto pt-1">
+          {showGroupFull && (
+            <p
+              className="mb-2 text-sm font-medium text-red-600"
+              role="alert"
+              aria-live="polite"
+            >
+              This group is full.
+            </p>
+          )}
+          <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => onViewDetails?.(event)}
@@ -304,6 +318,7 @@ export default function EventCard({
           >
             {isJoined ? '✓ Joined' : 'Join'}
           </button>
+          </div>
         </div>
       </div>
     </article>

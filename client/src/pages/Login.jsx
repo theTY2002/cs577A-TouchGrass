@@ -5,8 +5,8 @@ import { useEffect, useLayoutEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useSession } from '../tools/cache/SessionContext';
 import { setTouchGrassTitle } from '../tools/ui/documentTitle';
-import { TouchGrassMark } from '../components/TouchGrassIcon';
-import { isUscEduEmail } from '../tools/uscEmail';
+import { TouchGrassMark } from '../tools/ui/TouchGrassIcon';
+import { isUscEduEmail } from '../tools/ui/uscEmail';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -65,13 +65,13 @@ export default function Login() {
   };
 
   const inputClass =
-    'w-full rounded-[10px] border border-[#DBDBDB] bg-white px-4 py-3 text-[15px] text-neutral-900 placeholder:text-neutral-400 outline-none transition-shadow focus:border-brand-forest focus:ring-2 focus:ring-brand-forest/25';
+    'w-full rounded-[10px] border border-[#DBDBDB] bg-white px-4 py-3 text-[15px] leading-relaxed text-ink placeholder:text-ink-muted/60 outline-none transition-shadow focus:border-brand-forest focus:ring-2 focus:ring-brand-forest/25';
 
   return (
-    <div className="flex min-h-screen flex-1 flex-col bg-white lg:flex-row">
+    <div className="flex min-h-screen flex-1 flex-col bg-[#fafaf8] lg:flex-row">
       {/* Left: brand + hero (desktop) */}
       <section
-        className="relative hidden w-full flex-col justify-between overflow-hidden bg-white px-10 pb-10 pt-8 lg:flex lg:w-1/2 lg:px-14 lg:pb-14 lg:pt-10"
+        className="relative hidden w-full flex-col justify-between overflow-hidden bg-[#fafaf8] px-10 pb-10 pt-8 lg:flex lg:w-1/2 lg:px-14 lg:pb-14 lg:pt-10"
         aria-label="TouchGrass"
       >
         <Link
@@ -79,11 +79,11 @@ export default function Login() {
           className="flex w-fit items-center gap-3 rounded-lg outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-brand-forest"
         >
           <TouchGrassMark />
-          <span className="text-lg font-semibold tracking-tight text-black">TouchGrass</span>
+          <span className="text-lg font-medium tracking-tight text-ink">TouchGrass</span>
         </Link>
 
         <div className="flex flex-1 flex-col items-center justify-center px-4">
-          <h1 className="max-w-[420px] text-center text-[clamp(1.75rem,3vw,2.25rem)] font-bold leading-tight tracking-tight text-black">
+          <h1 className="max-w-[420px] text-center text-[clamp(1.75rem,3vw,2.25rem)] font-semibold leading-[1.15] tracking-[-0.02em] text-ink">
             Discover plans happening{' '}
             <span className="bg-gradient-to-r from-[#3d5c42] via-[#5f8060] to-[#A68B5B] bg-clip-text text-transparent">
               around you.
@@ -114,25 +114,25 @@ export default function Login() {
           className="flex items-center gap-2.5 outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-brand-forest"
         >
           <TouchGrassMark small />
-          <span className="font-semibold text-black">TouchGrass</span>
+          <span className="font-medium text-ink">TouchGrass</span>
         </Link>
       </div>
 
       {/* Right: form */}
       <section
-        className="flex flex-1 flex-col items-center justify-center px-6 py-10 sm:px-10 lg:w-1/2 lg:py-16"
+        className="flex flex-1 flex-col items-center justify-center px-6 py-12 sm:px-10 lg:w-1/2 lg:py-20"
         aria-labelledby="login-heading"
       >
         <div className="w-full max-w-[380px]">
           <h2
             id="login-heading"
-            className="mb-8 text-center text-2xl font-bold tracking-tight text-black lg:text-left"
+            className="mb-10 text-center text-2xl font-semibold leading-[1.2] tracking-[-0.02em] text-ink lg:text-left"
           >
             Log in to TouchGrass
           </h2>
 
           {/* Submitting this form triggers handleLogin (Log in button). */}
-          <form onSubmit={handleLogin} className="space-y-3">
+          <form onSubmit={handleLogin} className="space-y-4">
             {success && (
               <p className="rounded-[10px] border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
                 {success}
@@ -186,7 +186,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-2 w-full rounded-full bg-brand-forest py-3 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-forest/90 disabled:opacity-60"
+              className="mt-2 w-full rounded-full bg-brand-forest py-3 text-center text-sm font-medium text-white shadow-sm transition-colors hover:bg-brand-forest/90 disabled:opacity-60"
             >
               {loading ? 'Signing in…' : 'Log in'}
             </button>
@@ -195,7 +195,7 @@ export default function Login() {
           <div className="mt-4 text-center">
             <Link
               to="#"
-              className="text-sm font-semibold text-black hover:text-neutral-700"
+              className="text-sm font-medium text-ink hover:text-ink-muted"
             >
               Forgot password?
             </Link>
@@ -205,13 +205,13 @@ export default function Login() {
             {/* Secondary CTA: navigates to sign-up (no API call here). */}
             <Link
               to="/signup"
-              className="flex w-full items-center justify-center rounded-full border-2 border-brand-forest bg-white py-3 text-sm font-semibold text-brand-forest transition-colors hover:bg-brand-forest/10"
+              className="flex w-full items-center justify-center rounded-full border-2 border-brand-forest bg-white py-3 text-sm font-medium text-brand-forest transition-colors hover:bg-brand-forest/10"
             >
               Create new account
             </Link>
           </div>
 
-          <p className="mt-14 text-center text-xs text-neutral-400">TouchGrass</p>
+          <p className="mt-16 text-center text-xs text-ink-muted/70">TouchGrass</p>
         </div>
       </section>
     </div>

@@ -139,6 +139,7 @@ export function mapPostToEvent(row) {
  * @param {string} [opts.q]
  * @param {'posted_desc'|'date_desc'|'date_asc'} [opts.sort] Default on server is posted_desc (newest post first).
  * @param {boolean} [opts.myPlans]
+ * @param {boolean} [opts.feedRefresh] When true, server logs a scheduled refresh (periodic poll).
  */
 export async function fetchFeedPage({
   token = getStoredSessionToken(),
@@ -149,6 +150,7 @@ export async function fetchFeedPage({
   q = "",
   sort,
   myPlans = false,
+  feedRefresh = false,
 } = {}) {
   const params = new URLSearchParams();
   params.set("offset", String(offset));
@@ -158,6 +160,7 @@ export async function fetchFeedPage({
   if (q) params.set("q", q);
   if (sort) params.set("sort", sort);
   if (myPlans) params.set("my_plans", "1");
+  if (feedRefresh) params.set("feed_refresh", "1");
 
   const url = `${API_BASE}/api/feed?${params.toString()}`;
   console.log(

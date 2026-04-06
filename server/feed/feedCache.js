@@ -2,6 +2,7 @@
  * In-memory feed cache (first page only, per user + filter signature).
  * Not Redis — single-process only. Cleared on feed-affecting mutations.
  */
+/** Exported for feed route logging. */
 const TTL_MS = 60 * 1000;
 
 const store = new Map();
@@ -54,4 +55,5 @@ module.exports = {
   set,
   invalidateFeedCache,
   signatureFromSpec,
+  TTL_MS,
 };

@@ -1,10 +1,20 @@
 /**
- * Full-bleed photo hero with brand-tinted overlay, large headline, subheading.
+ * Full-bleed photo hero with brand-tinted overlay and headline.
  * Edit: image URL, overlay gradient in :root --hero-overlay
  */
 
+import RotatingText from '../tools/ui/RotatingText';
+
 /** Same asset as feed hero; used as default event cover when none is uploaded. */
 export const FEED_HERO_IMAGE = '/bg.png';
+
+const HERO_SUBTEXT_PHRASES = [
+  'Find something to do, whenever you feel like it.',
+  'See what others are up to and join when it feels right.',
+  'A simple way to meet people and do things together.',
+  'From study sessions to hangouts—there’s always something going on.',
+  'See what’s happening and join when you feel like it.',
+];
 
 export default function Hero() {
   return (
@@ -41,12 +51,14 @@ export default function Hero() {
             id="hero-heading"
             className="text-hero font-extrabold text-white tracking-tight text-shadow-hero animate-[fadeSlide_0.6s_ease-out]"
           >
-            Discover plans happening around you
+            Discover plans 
+            <br />
+            happening around you
           </h1>
-          <p className="mt-4 text-lg sm:text-xl text-white/95 leading-relaxed max-w-xl">
-            Join study sessions, coffee meetups, hikes, and more. Connect with
-            students who share your interests.
-          </p>
+          <RotatingText
+            phrases={HERO_SUBTEXT_PHRASES}
+            className="mt-4 text-lg sm:text-xl text-white/95 leading-relaxed max-w-xl"
+          />
         </div>
       </div>
     </section>

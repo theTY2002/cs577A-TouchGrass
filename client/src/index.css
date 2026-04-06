@@ -1,47 +1,91 @@
 /**
  * Global styles + Tailwind. Edit @theme and :root for palette.
- * Hero overlay: linear-gradient(90deg, rgba(116,136,115,0.42), rgba(209,169,128,0.22))
+ * Hero overlay: green→brown wash over the photo for readable white type
  */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Nabla&family=Poppins:wght@700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600&family=Nabla&display=swap');
 @import "tailwindcss";
 @config "../tailwind.config.js";
 
 @theme {
   --color-brand-forest: #748873;
-  --color-brand-terracotta: #D1A980;
-  --color-paper: #E5E0D8;
-  --color-cream: #F7F8F6;
-  --color-page: #F7F8F6;
+  --color-brand-terracotta: #d1a980;
+  --color-paper: #e5e0d8;
+  --color-cream: #f2f5f1;
+  --color-page: #f2f5f1;
+  /* Softer than pure black — green-tinted, readable on cream backgrounds */
+  --color-ink: #2f3e34;
+  --color-ink-muted: #5c6b62;
+  --color-ink-subtle: #7a8a80;
 }
-
 
 :root {
   --brand-forest: #748873;
-  --brand-terracotta: #D1A980;
-  --bg-paper: #E5E0D8;
-  --bg-white: #F7F8F6;
-  --page-bg: #F7F8F6;
-  /* Hero overlay - edit for duotone tint */
-  --hero-overlay: linear-gradient(90deg, rgba(116,136,115,0.42), rgba(209,169,128,0.22));
+  --brand-terracotta: #d1a980;
+  --bg-paper: #e5e0d8;
+  --bg-white: #f2f5f1;
+  --page-bg: #f2f5f1;
+  --text-ink: #2f3e34;
+  --text-ink-muted: #5c6b62;
+  /* Hero: layered brand wash (login-aligned greens + warm accent), photo stays visible */
+  --hero-overlay:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, #3d5c42 58%, transparent) 0%,
+      color-mix(in srgb, #5f8060 22%, transparent) 42%,
+      color-mix(in srgb, #a68b5b 12%, transparent) 72%,
+      transparent 100%
+    ),
+    linear-gradient(
+      105deg,
+      color-mix(in srgb, #2d4632 72%, transparent) 0%,
+      color-mix(in srgb, #748873 38%, transparent) 45%,
+      color-mix(in srgb, #8c7658 35%, transparent) 100%
+    );
 }
 
 @layer base {
   body {
-    @apply antialiased text-gray-800;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    background-color: var(--bg-white);
+    @apply antialiased text-ink font-normal;
+    font-family:
+      "Geist",
+      "Plus Jakarta Sans",
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      sans-serif;
+    line-height: 1.6;
+    font-weight: 400;
   }
 
-  button:focus-visible,
-  a:focus-visible,
-  input:focus-visible {
-    @apply outline-none ring-2 ring-brand-forest ring-offset-2;
+  h1 {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.12;
+  }
+
+  h2,
+  h3 {
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+  }
+
+  h4 {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+  }
+
+  p {
+    line-height: 1.6;
   }
 }
 
-/* Hero headline drop shadow */
+/* Hero headline: soft lift for contrast without a heavy mask */
 .text-shadow-hero {
-  text-shadow: 0 2px 12px rgba(0,0,0,0.25);
+  text-shadow:
+    0 1px 2px rgba(15, 22, 18, 0.35),
+    0 12px 40px rgba(15, 22, 18, 0.22);
 }
 
 /* Event detail hero title: readable on bright / high-key photos */
@@ -104,9 +148,15 @@
 
 /* Heart like animation */
 @keyframes heartPop {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.3); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.3);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .animate-heart {
@@ -166,3 +216,8 @@
   overflow: hidden;
 }
 
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  @apply outline-none ring-2 ring-brand-forest ring-offset-2;
+}

@@ -12,6 +12,7 @@ import FAB from '../components/FAB';
 import { isPlanCreatedByCurrentUser, isPlanInMyPlans } from '../tools/cache/localEventsStorage';
 import { useSession } from '../tools/cache/SessionContext';
 import { fetchFeedPage, joinEvent as joinEventApi } from '../tools/api';
+import { getFeedRefreshIntervalMs } from '../tools/feedRefreshMs';
 
 const PAGE_SIZE = 30;
 
@@ -26,6 +27,19 @@ function normalizeEventForFeed(e) {
   if (!e || typeof e !== 'object' || Array.isArray(e)) return null;
   const tags = Array.isArray(e.tags) ? e.tags : [];
   return { ...e, tags };
+}
+
+async function fetchFeedFirstPage({ feedRefresh = false } = {}) {
+  const res = await fetchFeedPage({
+    offset: 0,
+    limit: PAGE_SIZE,
+    feedRefresh,
+  });
+  return {
+    events: res.events.map(normalizeEventForFeed).filter(Boolean),
+    hasMore: res.hasMore,
+    nextOffset: res.events.length,
+  };
 }
 
 /** YYYY-MM-DD in local time, for calendar-day comparisons. */
@@ -78,6 +92,8 @@ export default function Feed() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
   const [joinNotice, setJoinNotice] = useState(null);
+  /** Event id that returned GROUP_FULL on last Join — shown on that card only. */
+  const [groupFullEventId, setGroupFullEventId] = useState(null);
   const [hasMore, setHasMore] = useState(true);
   const [nextOffset, setNextOffset] = useState(0);
   const [showPastEvents, setShowPastEvents] = useState(false);
@@ -226,14 +242,11 @@ export default function Feed() {
       setHasMore(true);
       setNextOffset(0);
       try {
-        const res = await fetchFeedPage({
-          offset: 0,
-          limit: PAGE_SIZE,
-        });
+        const data = await fetchFeedFirstPage();
         if (cancelled) return;
-        setEvents(res.events.map(normalizeEventForFeed).filter(Boolean));
-        setHasMore(res.hasMore);
-        setNextOffset(res.events.length);
+        setEvents(data.events);
+        setHasMore(data.hasMore);
+        setNextOffset(data.nextOffset);
       } catch (e) {
         if (!cancelled) {
           setError(e?.message || 'Failed to load feed');
@@ -248,6 +261,30 @@ export default function Feed() {
     void loadFirstPage();
     return () => {
       cancelled = true;
+    };
+  }, [sessionReady, signedIn]);
+
+  /** Periodic refresh of the first feed page while signed in (does not show full-page loading). */
+  useEffect(() => {
+    if (!sessionReady || !signedIn) return undefined;
+    const intervalMs = getFeedRefreshIntervalMs();
+    let cancelled = false;
+    const id = setInterval(() => {
+      void (async () => {
+        try {
+          const data = await fetchFeedFirstPage({ feedRefresh: true });
+          if (cancelled) return;
+          setEvents(data.events);
+          setHasMore(data.hasMore);
+          setNextOffset(data.nextOffset);
+        } catch {
+          /* keep existing list on background refresh failure */
+        }
+      })();
+    }, intervalMs);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
     };
   }, [sessionReady, signedIn]);
 
@@ -328,6 +365,7 @@ export default function Feed() {
   const handleJoin = async (event) => {
     if (user?.id == null) return;
     setJoinNotice(null);
+    setGroupFullEventId(null);
     try {
       const data = await joinEventApi(event.id, user.id);
       if (data?.current_members != null) {
@@ -339,13 +377,12 @@ export default function Feed() {
       }
       joinEvent(event.id);
     } catch (e) {
-      const full =
-        e?.status === 409 && e?.code === "GROUP_FULL";
-      setJoinNotice(
-        full
-          ? "This group is full."
-          : e?.message || "Could not join this event.",
-      );
+      const full = e?.status === 409 && e?.code === "GROUP_FULL";
+      if (full) {
+        setGroupFullEventId(event.id);
+      } else {
+        setJoinNotice(e?.message || "Could not join this event.");
+      }
     }
   };
 
@@ -460,7 +497,7 @@ export default function Feed() {
               {upcomingEvents.map((event, index) => (
                 <div
                   key={event.id}
-                  className="animate-card-enter opacity-0"
+                  className="animate-card-enter h-full min-h-0 opacity-0"
                   style={{ animationDelay: `${index * 80}ms` }}
                 >
                   <EventCard
@@ -469,6 +506,7 @@ export default function Feed() {
                     isJoined={
                       joinedIds.has(event.id) || isPlanCreatedByCurrentUser(event, user)
                     }
+                    showGroupFull={groupFullEventId === event.id}
                     onViewDetails={handleViewEvent}
                     onJoin={handleJoin}
                     index={index}
@@ -494,7 +532,7 @@ export default function Feed() {
                       {pastEvents.map((event, index) => (
                         <div
                           key={event.id}
-                          className="animate-card-enter opacity-0"
+                          className="animate-card-enter h-full min-h-0 opacity-0"
                           style={{ animationDelay: `${index * 80}ms` }}
                         >
                           <EventCard
@@ -504,6 +542,7 @@ export default function Feed() {
                               joinedIds.has(event.id) ||
                               isPlanCreatedByCurrentUser(event, user)
                             }
+                            showGroupFull={groupFullEventId === event.id}
                             onViewDetails={handleViewEvent}
                             onJoin={handleJoin}
                             index={index}

@@ -30,11 +30,11 @@ export default function Help() {
   return (
     <div className="flex min-h-0 flex-1 flex-col justify-center px-4 py-12 sm:px-6 sm:py-16 md:py-20">
       <div className="mx-auto w-full max-w-xl lg:max-w-2xl">
-        <header className="mb-8 text-center sm:mb-10">
-          <h1 className="font-display text-3xl font-bold tracking-tight text-stone-900 sm:text-[2rem]">
+        <header className="mb-10 text-center sm:mb-12">
+          <h1 className="font-display text-3xl font-semibold leading-[1.15] tracking-[-0.02em] text-ink sm:text-[2rem]">
             Help &amp; support
           </h1>
-          <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-brand-forest/80 sm:text-[0.9375rem]">
+          <p className="mx-auto mt-4 max-w-md text-sm leading-[1.65] text-brand-forest/75 sm:text-[0.9375rem]">
             Find answers or get in touch.
           </p>
         </header>
@@ -54,12 +54,12 @@ export default function Help() {
               </svg>
             </SectionIcon>
             <div className="min-w-0 flex-1">
-              <h2 id="help-getting-started" className="text-base font-semibold tracking-tight text-stone-900">
+              <h2 id="help-getting-started" className="text-base font-semibold leading-snug tracking-[-0.015em] text-ink">
                 Getting started
               </h2>
-              <p className="mt-2.5 text-sm leading-relaxed text-stone-500 sm:text-[0.9375rem] sm:leading-relaxed">
+              <p className="mt-3 text-sm leading-[1.65] text-ink-muted sm:text-[0.9375rem]">
                 Browse the feed, filter events, and join ones you like. When you&apos;re signed in, tap the{' '}
-                <span className="font-medium text-stone-600">+</span> button to create an event and share it with
+                <span className="font-medium text-ink/80">+</span> button to create an event and share it with
                 others.
               </p>
             </div>
@@ -76,10 +76,10 @@ export default function Help() {
               </svg>
             </SectionIcon>
             <div className="min-w-0 flex-1">
-              <h2 id="help-account" className="text-base font-semibold tracking-tight text-stone-900">
+              <h2 id="help-account" className="text-base font-semibold leading-snug tracking-[-0.015em] text-ink">
                 Account
               </h2>
-              <p className="mt-2.5 text-sm leading-relaxed text-stone-500 sm:text-[0.9375rem] sm:leading-relaxed">
+              <p className="mt-3 text-sm leading-[1.65] text-ink-muted sm:text-[0.9375rem]">
                 Open the menu from your profile icon to access settings, help, or sign out.
               </p>
             </div>
@@ -89,7 +89,7 @@ export default function Help() {
         <div className="mt-8 flex justify-center sm:mt-9">
           <Link
             to="/feed"
-            className="group inline-flex w-full max-w-xs items-center justify-center gap-2 rounded-xl border border-brand-forest/20 bg-white/90 px-5 py-3.5 text-sm font-semibold text-brand-forest shadow-sm shadow-brand-forest/5 transition-all duration-200 hover:border-brand-forest/35 hover:bg-brand-forest/[0.06] hover:shadow-md hover:shadow-brand-forest/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-forest focus-visible:ring-offset-2 sm:w-auto sm:max-w-none sm:min-w-[200px]"
+            className="group inline-flex w-full max-w-xs items-center justify-center gap-2 rounded-xl border border-brand-forest/20 bg-white/90 px-5 py-3.5 text-sm font-medium text-brand-forest shadow-sm shadow-brand-forest/5 transition-all duration-200 hover:border-brand-forest/35 hover:bg-brand-forest/[0.06] hover:shadow-md hover:shadow-brand-forest/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-forest focus-visible:ring-offset-2 sm:w-auto sm:max-w-none sm:min-w-[200px]"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"

@@ -33,17 +33,16 @@ export default function EventDetails() {
   useEffect(() => {
     async function fetchEventDetails() {
       try {
-        // Fetch the live data from PostgreSQL!
         const fetchedEvent = await getEvent(id);
         setEvent(fetchedEvent);
       } catch (error) {
-        console.error("Could not fetch event:", error);
+        console.error('Could not fetch event:', error);
         setEvent(null);
       } finally {
         setLookupDone(true);
       }
     }
-    
+
     fetchEventDetails();
   }, [id]);
 

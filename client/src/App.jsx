@@ -16,7 +16,7 @@ function RootRedirect() {
   const { sessionReady, signedIn } = useSession();
   if (!sessionReady) {
     return (
-      <div className="flex flex-1 items-center justify-center text-neutral-500" aria-busy="true">
+      <div className="flex flex-1 items-center justify-center text-ink-muted" aria-busy="true">
         Loading…
       </div>
     );
